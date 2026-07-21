@@ -1,0 +1,24 @@
+# SubletWorks.com — robots
+User-agent: *
+Allow: /$
+Allow: /index.html
+Allow: /pages/login/
+
+# Authenticated app screens hold user-specific data — keep them out of the index.
+Disallow: /pages/pm-dashboard/
+Disallow: /pages/contractor-dashboard/
+Disallow: /pages/admin-dashboard/
+Disallow: /pages/project-workspace/
+Disallow: /pages/tender-detail/
+Disallow: /pages/tender-wizard/
+Disallow: /pages/loi-view/
+Disallow: /pages/work-order-view/
+Disallow: /pages/profile-settings/
+Disallow: /pages/spreadsheets/
+Disallow: /pages/pm-projects/
+Disallow: /pages/pm-tenders/
+Disallow: /pages/pm-contractors/
+Disallow: /pages/contractor-tenders/
+Disallow: /pages/external-project-new/
+
+Sitemap: https://subletworks.com/sitemap.xml

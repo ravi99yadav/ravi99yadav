@@ -1,0 +1,19 @@
+{
+  "name": "SubletWorks.com — Construction Marketplace & Project Management",
+  "short_name": "SubletWorks",
+  "description": "India's construction sublet marketplace and project-management platform: tenders, bidding, work orders, planning, billing and a materials marketplace.",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#0f1424",
+  "theme_color": "#5B5CEB",
+  "lang": "en-IN",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "assets/img/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

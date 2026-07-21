@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-label="SubletWorks — India's construction sublet marketplace and project management platform">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4547c4"/>
+      <stop offset="1" stop-color="#8f8ff3"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <g transform="translate(80,90)">
+    <rect width="96" height="96" rx="22" fill="#ffffff"/>
+    <text x="48" y="66" font-size="46" fill="#5B5CEB" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="800">SW</text>
+    <text x="120" y="66" font-size="44" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="800">SubletWorks.com</text>
+  </g>
+  <text x="80" y="320" font-size="72" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="800">Construction Sublet</text>
+  <text x="80" y="400" font-size="72" fill="#ffffff" font-family="Arial, Helvetica, sans-serif" font-weight="800">Marketplace &amp; PM OS</text>
+  <text x="80" y="470" font-size="34" fill="#eef0ff" font-family="Arial, Helvetica, sans-serif">Tenders · L1/L2/L3 Bidding · LOI &amp; Work Orders · Gantt/WBS · MB &amp; RA Billing</text>
+  <text x="80" y="540" font-size="30" fill="#dfe1ff" font-family="Arial, Helvetica, sans-serif" font-weight="600">🇮🇳 Built for Indian Construction &amp; Infrastructure</text>
+</svg>
