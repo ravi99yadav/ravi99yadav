@@ -1381,6 +1381,136 @@
     w.document.close();
   }
 
+  /* ================= VEHICLE LOG ================= */
+  const VEHICLE_CHECKS = [
+    { key:"tyres", label:"Tyres in good condition" },
+    { key:"brakes", label:"Brakes functioning properly" },
+    { key:"lights", label:"Lights/indicators working" },
+    { key:"documents", label:"RC / Insurance / PUC valid" },
+    { key:"license", label:"Driver license valid" },
+    { key:"loadSecured", label:"Load properly secured / covered" }
+  ];
+  function vehicleLogStatus(log){
+    const checks = log.checks||{};
+    const allPassed = VEHICLE_CHECKS.every(c=> checks[c.key]);
+    if(!log.exitTime) return allPassed ? "on-site" : "flagged";
+    return allPassed ? "exited" : "flagged";
+  }
+  function vehicleStatusBadge(status){
+    const map = { "on-site":"badge-info", exited:"badge-success", flagged:"badge-danger" };
+    const label = { "on-site":"On Site", exited:"Exited", flagged:"⚠ Flagged" };
+    return `<span class="badge ${map[status]||'badge-neutral'}">${label[status]||status}</span>`;
+  }
+  function renderVehicle(){
+    const list = DB.vehicleLogs.list(v=>v.projectId===project.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const pos = DB.purchaseOrders.list(p=>p.projectId===project.id);
+    const panel = document.getElementById("panelVehicle");
+    panel.innerHTML = `
+      <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:520px">Log every transport vehicle entering site — material delivery trucks, equipment carriers, etc. — with a safety checklist before allowing entry.</p>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm" id="exportVehicleCsvBtn">⬇ Export CSV</button>
+          <button class="btn btn-primary btn-sm" id="newVehicleBtn">+ Log Vehicle Entry</button>
+        </div>
+      </div>
+      ${list.length ? list.map((v,vi)=>{
+        const status = vehicleLogStatus(v);
+        const failedChecks = VEHICLE_CHECKS.filter(c=> !(v.checks||{})[c.key]);
+        return `<div class="card mb-3 card-enter" style="animation-delay:${vi*40}ms">
+          <div class="flex justify-between items-start" style="flex-wrap:wrap;gap:10px">
+            <div><b>${U.escapeHtml(v.vehicleNo)}</b> — ${U.escapeHtml(v.purpose)}
+              <div class="text-muted" style="font-size:12px">Driver: ${U.escapeHtml(v.driverName)}${v.driverPhone?` (${U.escapeHtml(v.driverPhone)})`:""} · Entry ${U.fmtDateTime(v.entryTime)}${v.exitTime?` · Exit ${U.fmtDateTime(v.exitTime)}`:""}</div>
+              ${v.poId ? `<div class="text-muted" style="font-size:12px">Against PO: ${U.escapeHtml((pos.find(p=>p.id===v.poId)||{}).poNo||"—")}</div>` : ""}
+            </div>
+            ${vehicleStatusBadge(status)}
+          </div>
+          ${failedChecks.length ? `<p class="mt-2" style="font-size:12px;color:var(--sw-danger)">⚠ Failed checks: ${failedChecks.map(c=>U.escapeHtml(c.label)).join(", ")}</p>` : ""}
+          ${v.notes ? `<p class="text-muted mt-1" style="font-size:12px">📝 ${U.escapeHtml(v.notes)}</p>` : ""}
+          <div class="flex gap-2 mt-3">
+            <button class="btn btn-sm btn-outline" data-print-vehicle="${v.id}">🖨 Print Gate Pass</button>
+            ${!v.exitTime ? `<button class="btn btn-sm btn-primary" data-vehicle-exit="${v.id}">Mark Exit</button>` : ""}
+          </div>
+        </div>`;
+      }).join("") : `<div class="empty-state"><div class="es-icon">🚚</div>No vehicle entries logged yet.</div>`}`;
+
+    document.getElementById("newVehicleBtn").addEventListener("click", ()=> openVehicleModal(pos));
+    document.getElementById("exportVehicleCsvBtn").addEventListener("click", ()=>{
+      U.exportCSV(`vehicle-log-${project.name}`,
+        ["Vehicle No","Purpose","Driver","Driver Phone","Entry Time","Exit Time","Status","Failed Checks","Notes"],
+        list.map(v=>{
+          const failed = VEHICLE_CHECKS.filter(c=> !(v.checks||{})[c.key]).map(c=>c.label).join("; ");
+          return [v.vehicleNo, v.purpose, v.driverName, v.driverPhone||"", U.fmtDateTime(v.entryTime), v.exitTime?U.fmtDateTime(v.exitTime):"", vehicleLogStatus(v), failed, v.notes||""];
+        }));
+    });
+    panel.querySelectorAll("[data-print-vehicle]").forEach(b=> b.addEventListener("click", ()=> printVehiclePass(DB.vehicleLogs.get(b.dataset.printVehicle))));
+    panel.querySelectorAll("[data-vehicle-exit]").forEach(b=> b.addEventListener("click", ()=>{
+      DB.vehicleLogs.update(b.dataset.vehicleExit, { exitTime: DB.nowISO() });
+      U.toast("Vehicle exit recorded.", {type:"success"}); renderVehicle();
+    }));
+  }
+
+  function openVehicleModal(pos){
+    document.getElementById("genericModalTitle").textContent = "Log Vehicle Entry";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="input-group">
+        <div class="field"><label>Vehicle Number</label><input class="input" id="vNo" placeholder="e.g. HR26 AB 1234"></div>
+        <div class="field"><label>Purpose</label>
+          <select class="select" id="vPurpose"><option>Material Delivery</option><option>Equipment</option><option>Waste Removal</option><option>Other</option></select>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Driver Name</label><input class="input" id="vDriverName"></div>
+        <div class="field"><label>Driver Phone</label><input class="input" id="vDriverPhone"></div>
+      </div>
+      ${pos.length ? `<div class="field"><label>Against Purchase Order (optional)</label><select class="select" id="vPO"><option value="">— None —</option>${pos.map(p=>`<option value="${p.id}">${U.escapeHtml(p.poNo)} — ${U.escapeHtml(p.vendorName)}</option>`).join("")}</select></div>` : ""}
+      <div class="field"><label>Safety Checklist</label>
+        ${VEHICLE_CHECKS.map(c=>`<label class="checkbox-row"><input type="checkbox" class="vCheck" data-check="${c.key}" checked> ${U.escapeHtml(c.label)}</label>`).join("")}
+      </div>
+      <div class="field"><label>Notes (optional)</label><textarea class="textarea" id="vNotes" placeholder="e.g. Minor tyre wear noted, cleared for entry"></textarea></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="vSaveBtn">Log Entry</button>`;
+    U.openModal("genericModal");
+    document.getElementById("vSaveBtn").addEventListener("click", ()=>{
+      const vehicleNo = document.getElementById("vNo").value.trim();
+      const driverName = document.getElementById("vDriverName").value.trim();
+      if(!vehicleNo || !driverName){ U.toast("Enter the vehicle number and driver name.", {type:"danger"}); return; }
+      const checks = {};
+      document.querySelectorAll(".vCheck").forEach(c=> checks[c.dataset.check] = c.checked);
+      DB.vehicleLogs.create({
+        projectId:project.id, vehicleNo, purpose:document.getElementById("vPurpose").value,
+        driverName, driverPhone:document.getElementById("vDriverPhone").value.trim(),
+        poId: document.getElementById("vPO") ? (document.getElementById("vPO").value||null) : null,
+        checks, notes:document.getElementById("vNotes").value.trim(),
+        entryTime:DB.nowISO(), exitTime:null, loggedBy:user.id
+      });
+      U.closeModal("genericModal"); renderVehicle();
+      U.toast("Vehicle entry logged.", {type:"success"});
+    });
+  }
+
+  function printVehiclePass(v){
+    const checksHtml = VEHICLE_CHECKS.map(c=>`<tr><td>${U.escapeHtml(c.label)}</td><td>${(v.checks||{})[c.key] ? "✅ Passed" : "❌ Failed"}</td></tr>`).join("");
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>Gate Pass — ${U.escapeHtml(v.vehicleNo)}</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <div class="brand">SubletWorks.com</div>
+      <div class="title">Vehicle Gate Pass</div>
+      <p style="font-size:13px"><b>Vehicle No:</b> ${U.escapeHtml(v.vehicleNo)} &nbsp;|&nbsp; <b>Purpose:</b> ${U.escapeHtml(v.purpose)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
+      <p style="font-size:13px"><b>Driver:</b> ${U.escapeHtml(v.driverName)} ${v.driverPhone?`(${U.escapeHtml(v.driverPhone)})`:""}</p>
+      <p style="font-size:13px"><b>Entry Time:</b> ${U.fmtDateTime(v.entryTime)} &nbsp;|&nbsp; <b>Exit Time:</b> ${v.exitTime?U.fmtDateTime(v.exitTime):"— (still on site)"}</p>
+      <table><thead><tr><th>Safety Check</th><th>Result</th></tr></thead><tbody>${checksHtml}</tbody></table>
+      ${v.notes?`<p style="font-size:13px"><b>Notes:</b> ${U.escapeHtml(v.notes)}</p>`:""}
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Overall: ${vehicleLogStatus(v)==='flagged' ? '⚠ Flagged' : 'Cleared'}</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
+  }
+
   /* ================= RECONCILIATION ================= */
   function renderReconciliation(){
     const items = projectBoqItems();
@@ -1823,10 +1953,11 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
+  document.querySelector('#wsTabs [data-tab="vehicle"]').addEventListener("click", renderVehicle);
   const requestedTab = params.get("tab");
   if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
@@ -1844,6 +1975,7 @@
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Purchase Orders: raise a PO to any material vendor with an item table (paste from Excel supported), then record the vendor's Proforma Invoice (PI number, validity, GST%, advance%) once received. Status moves Draft → Sent → PI Received → Confirmed → Goods Received, with a professional print view for both the PO and the PI.",
+    "Vehicle Log: log every transport vehicle entering site (material delivery, equipment, waste removal) with driver details, an optional link to a Purchase Order, and a safety checklist (tyres, brakes, lights, documents, license, load secured). Any failed check flags the entry; print a Gate Pass or mark the vehicle's exit once it leaves.",
     "Payment Requests: a lightweight way to formally request release of funds against measured or billed work."
   ]);
 })();

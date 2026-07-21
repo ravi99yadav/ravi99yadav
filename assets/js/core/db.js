@@ -12,7 +12,7 @@
     "revisions","contactUnlocks","lois","workOrders","projects","ganttTasks",
     "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs","workPlans",
     "hindrances","hindranceLibrary","eotRequests","paymentRequests","marketplaceListings","marketplaceInquiries",
-    "purchaseOrders",
+    "purchaseOrders","vehicleLogs",
     "notifications","auditLogs","savedTenders","files","shares","supportTickets","settings"
   ];
 
