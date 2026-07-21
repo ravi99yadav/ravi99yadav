@@ -439,6 +439,34 @@
     });
   }
 
+  // Approximate standard estimation norms (material & mandays) per unit quantity of common work items.
+  // These are typical construction industry averages meant as a starting point — always adjust for your site.
+  const WORK_NORMS = [
+    { name:"Excavation — ordinary soil", unit:"Cum",
+      material:[], labour:[{trade:"Mazdoor", perUnit:0.20}] },
+    { name:"PCC 1:4:8", unit:"Cum",
+      material:[{item:"Cement", perUnit:4.0, unit:"Bags"},{item:"Sand", perUnit:0.45, unit:"Cum"},{item:"Aggregate", perUnit:0.90, unit:"Cum"}],
+      labour:[{trade:"Mason", perUnit:0.15},{trade:"Mazdoor", perUnit:0.60}] },
+    { name:"RCC M25 (excl. steel)", unit:"Cum",
+      material:[{item:"Cement", perUnit:8.0, unit:"Bags"},{item:"Sand", perUnit:0.42, unit:"Cum"},{item:"Aggregate", perUnit:0.84, unit:"Cum"}],
+      labour:[{trade:"Mason", perUnit:0.30},{trade:"Mazdoor", perUnit:1.20},{trade:"Bar Bender", perUnit:0.25}] },
+    { name:"Brickwork 1:6", unit:"Cum",
+      material:[{item:"Bricks", perUnit:500, unit:"Nos"},{item:"Cement", perUnit:1.5, unit:"Bags"},{item:"Sand", perUnit:0.30, unit:"Cum"}],
+      labour:[{trade:"Mason", perUnit:0.80},{trade:"Mazdoor", perUnit:1.60}] },
+    { name:"Plastering 12mm (1:6)", unit:"Sqm",
+      material:[{item:"Cement", perUnit:0.09, unit:"Bags"},{item:"Sand", perUnit:0.015, unit:"Cum"}],
+      labour:[{trade:"Mason", perUnit:0.10},{trade:"Mazdoor", perUnit:0.10}] },
+    { name:"Flooring — vitrified tiles", unit:"Sqm",
+      material:[{item:"Tiles", perUnit:1.05, unit:"Sqm"},{item:"Cement", perUnit:0.20, unit:"Bags"},{item:"Sand", perUnit:0.02, unit:"Cum"}],
+      labour:[{trade:"Tile Mason", perUnit:0.15},{trade:"Mazdoor", perUnit:0.15}] },
+    { name:"Painting — 2 coats emulsion", unit:"Sqm",
+      material:[{item:"Emulsion Paint", perUnit:0.14, unit:"Litre"}],
+      labour:[{trade:"Painter", perUnit:0.05}] },
+    { name:"Steel reinforcement (TMT) fixing", unit:"MT",
+      material:[{item:"Binding Wire", perUnit:10, unit:"Kg"}],
+      labour:[{trade:"Bar Bender", perUnit:1.0},{trade:"Mazdoor", perUnit:0.5}] }
+  ];
+
   function wpRowsHtml(rows, cols){
     return rows.map((r,idx)=>`<tr data-idx="${idx}">${cols.map(c=>`<td contenteditable="true" data-field="${c}">${U.escapeHtml(r[c]||"")}</td>`).join("")}<td><button class="btn btn-icon btn-ghost" data-wp-rm-row>🗑</button></td></tr>`).join("");
   }
@@ -455,8 +483,19 @@
         <div class="field"><label>To Date</label><input class="input" type="date" id="wpTo" value="${plan?plan.dateTo||'':''}"></div>
       </div>
       <div class="field"><label>Linked Gantt Task (optional)</label><select class="select" id="wpTask"><option value="">— None —</option>${tasks.map(t=>`<option value="${t.id}" ${plan&&plan.ganttTaskId===t.id?'selected':''}>${U.escapeHtml(t.name)}</option>`).join("")}</select></div>
+
+      <div class="card mb-4" style="background:var(--surface-2)">
+        <label class="mb-1" style="font-weight:600;font-size:13px">Quick-fill from a Common Work Item</label>
+        <p class="hint mb-2">Pick a standard work item and quantity — material and mandays required are added to the tables below automatically using typical estimation norms (adjust afterward for your site).</p>
+        <div class="input-group" style="align-items:flex-end">
+          <div class="field" style="margin-bottom:0"><label>Work Item</label><select class="select" id="wpNormSelect">${WORK_NORMS.map((n,i)=>`<option value="${i}">${U.escapeHtml(n.name)} (per ${n.unit})</option>`).join("")}</select></div>
+          <div class="field" style="margin-bottom:0;max-width:140px"><label>Quantity</label><input class="input" type="number" id="wpNormQty" placeholder="e.g. 50"></div>
+          <button class="btn btn-outline" id="wpApplyNormBtn" type="button">+ Add to Plan</button>
+        </div>
+      </div>
+
       <label class="mb-1" style="font-weight:600;font-size:13px">Labour Required</label>
-      <p class="hint mb-1">Paste rows from Excel (Trade, Count) directly into the first cell.</p>
+      <p class="hint mb-1">Count is mandays/headcount for the period — paste rows from Excel (Trade, Count) directly into the first cell, or use Quick-fill above.</p>
       <div class="table-wrap mb-2"><table class="dtable" id="wpLabourTable"><thead><tr><th>Trade</th><th>Count</th><th></th></tr></thead><tbody id="wpLabourBody">${wpRowsHtml(labourRows,["trade","count"])}</tbody></table></div>
       <button class="btn btn-outline btn-sm mb-3" id="wpAddLabourRow">+ Add Labour Row</button>
       <label class="mb-1" style="font-weight:600;font-size:13px">Material Required</label>
@@ -508,6 +547,31 @@
     bindTable("wpMaterialBody", materialRows, ["item","qty","unit"]);
     document.getElementById("wpAddLabourRow").addEventListener("click", ()=>{ labourRows.push({trade:"",count:""}); document.getElementById("wpLabourBody").innerHTML = wpRowsHtml(labourRows,["trade","count"]); });
     document.getElementById("wpAddMaterialRow").addEventListener("click", ()=>{ materialRows.push({item:"",qty:"",unit:""}); document.getElementById("wpMaterialBody").innerHTML = wpRowsHtml(materialRows,["item","qty","unit"]); });
+
+    document.getElementById("wpApplyNormBtn").addEventListener("click", ()=>{
+      const norm = WORK_NORMS[+document.getElementById("wpNormSelect").value];
+      const qty = +document.getElementById("wpNormQty").value || 0;
+      if(!qty){ U.toast("Enter a quantity to apply the norm to.", {type:"danger"}); return; }
+      if(labourRows.length===1 && !labourRows[0].trade) labourRows.length = 0;
+      if(materialRows.length===1 && !materialRows[0].item) materialRows.length = 0;
+      norm.labour.forEach(l=>{
+        const mandays = Math.ceil(qty * l.perUnit * 100) / 100;
+        const existing = labourRows.find(r=>r.trade.toLowerCase()===l.trade.toLowerCase());
+        if(existing) existing.count = (+existing.count||0) + mandays;
+        else labourRows.push({ trade:l.trade, count:mandays });
+      });
+      norm.material.forEach(m=>{
+        const mqty = Math.round(qty * m.perUnit * 100) / 100;
+        const existing = materialRows.find(r=>r.item.toLowerCase()===m.item.toLowerCase() && r.unit===m.unit);
+        if(existing) existing.qty = (+existing.qty||0) + mqty;
+        else materialRows.push({ item:m.item, qty:mqty, unit:m.unit });
+      });
+      if(!labourRows.length) labourRows.push({trade:"",count:""});
+      if(!materialRows.length) materialRows.push({item:"",qty:"",unit:""});
+      document.getElementById("wpLabourBody").innerHTML = wpRowsHtml(labourRows,["trade","count"]);
+      document.getElementById("wpMaterialBody").innerHTML = wpRowsHtml(materialRows,["item","qty","unit"]);
+      U.toast(`Added standard requirement for ${qty} ${norm.unit} of ${norm.name}.`, {type:"success"});
+    });
 
     document.getElementById("wpSaveBtn").addEventListener("click", ()=>{
       const dateFrom = document.getElementById("wpFrom").value;
@@ -1096,7 +1160,7 @@
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
-    "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range, optionally linked to a Gantt task. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables.",
+    "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range, optionally linked to a Gantt task. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables, or use \"Quick-fill from a Common Work Item\" to auto-calculate standard material and mandays for common items (Brickwork, PCC, RCC, Plastering, Flooring, Painting, Steel fixing) from a quantity.",
     "MB Sheet: every row is measured against a specific BOQ item (official or an approved Extra Item) picked from a dropdown — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate that also switch the row to a weight unit (kg). The abstract sums every row per BOQ item automatically and converts kg → MT when that item is billed in MT/Tons.",
     "RA Bill: for item-wise BOQs, claim against each item using % complete or a manual cumulative quantity — this-bill qty/amount is auto-computed from the last billed cumulative. Retention, advance recovery, GST and TDS are then calculated automatically. Project Managers approve or reject.",
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
