@@ -1,2 +1,10 @@
 .listing-card{padding:16px;}
 .listing-photo{height:120px;border-radius:var(--r-md);background:var(--sw-gradient-brand);display:flex;align-items:center;justify-content:center;font-size:32px;color:#fff;margin-bottom:10px;}
+.section-divider{display:flex;align-items:center;gap:10px;margin:18px 0 12px;color:var(--sw-primary);font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;}
+.section-divider::before,.section-divider::after{content:"";flex:1;height:1px;background:var(--border);}
+.listing-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px;}
+.listing-chips .badge{font-size:10.5px;}
+.detail-row{display:flex;justify-content:space-between;gap:14px;padding:7px 0;border-bottom:1px dashed var(--border);font-size:13px;}
+.detail-row:last-child{border-bottom:0;}
+.detail-row .dr-label{color:var(--text-muted);}
+.detail-row .dr-val{font-weight:600;text-align:right;}

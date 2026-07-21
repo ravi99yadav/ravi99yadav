@@ -60,9 +60,37 @@
         <div class="field"><label>District</label><select class="select" id="lDistrict"></select></div>
       </div>
       <div class="field"><label>Description</label><textarea class="textarea" id="lDesc"></textarea></div>
+
+      <div class="section-divider"><span>Sale details</span></div>
+      <div class="input-group">
+        <div class="field"><label>GST Invoice</label><select class="select" id="lGstInvoice"><option value="no">Not available</option><option value="yes">Available</option></select></div>
+        <div class="field"><label>Purchase Bill / Proof</label><select class="select" id="lBillAvail"><option value="no">Not available</option><option value="yes">Available</option></select></div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Price Negotiable?</label><select class="select" id="lNegotiable"><option value="no">Fixed price</option><option value="yes">Negotiable</option></select></div>
+        <div class="field"><label>Warranty / Guarantee</label><input class="input" id="lWarranty" placeholder="e.g. 6 months / 1 year / None"></div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Transport Responsibility</label><select class="select" id="lTransport"><option value="buyer">Buyer arranges pickup</option><option value="seller">Seller delivers</option><option value="negotiable">Negotiable</option></select></div>
+        <div class="field"><label>Inspection</label><select class="select" id="lInspection"><option value="">Not specified</option><option>Available at site</option><option>By appointment</option><option>Video inspection</option><option>Already inspected / certified</option></select></div>
+      </div>
+      <div class="input-group" id="transportRateWrap" style="display:none">
+        <div class="field"><label>Transport Rate (₹ / km)</label><input class="input" type="number" id="lTransportRate" placeholder="e.g. 45"></div>
+        <div class="field"><label>Free delivery up to (km)</label><input class="input" type="number" id="lFreeKm" placeholder="e.g. 10"></div>
+      </div>
+      <div class="field"><label>Terms &amp; Conditions (optional)</label><textarea class="textarea" id="lTerms" placeholder="Payment terms, loading/unloading, return policy, minimum order, etc."></textarea></div>
+
       <div class="field"><label>Photos</label><div class="dropzone" style="padding:20px"><p style="margin:0">📷 Photo upload placeholder</p></div></div>
     </div>
     <div class="modal-foot"><button class="btn btn-primary" id="listingSave">Publish Listing</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="detailsModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="detailsModalTitle">Listing Details</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body" id="detailsModalBody"></div>
+    <div class="modal-foot"><button class="btn btn-primary" id="detailsContactBtn">Contact Seller</button></div>
   </div>
 </div>
 
