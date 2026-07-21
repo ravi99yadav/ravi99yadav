@@ -247,6 +247,7 @@
         if(!btn) return;
         indicator.style.width = btn.offsetWidth + "px";
         indicator.style.left = btn.offsetLeft + "px";
+        indicator.style.top = (btn.offsetTop + btn.offsetHeight - 2) + "px";
       }
       moveIndicatorTo(tabs.querySelector(".tab-btn.active"));
       qsa(".tab-btn",tabs).forEach(btn=>{
