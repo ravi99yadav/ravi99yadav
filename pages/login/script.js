@@ -12,6 +12,7 @@
 
   const ROLE_LABEL = { pm:"Project Manager", contractor:"Contractor", admin:"Admin" };
   const roleTabs = document.getElementById("roleTabs");
+  SW.Geo.bindStateDistrict(document.getElementById("regState"), document.getElementById("regDistrict"), {});
 
   function setRole(role){
     currentRole = role;

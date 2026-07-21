@@ -76,8 +76,8 @@
           <div class="field"><label>Mobile Number</label><input class="input" name="phone" data-validate="required|phone"><div class="error-msg">Enter a valid 10-digit number.</div></div>
         </div>
         <div class="input-group">
-          <div class="field"><label>District</label><input class="input" name="district" data-validate="required"><div class="error-msg">District is required.</div></div>
-          <div class="field"><label>State</label><input class="input" name="state" data-validate="required"><div class="error-msg">State is required.</div></div>
+          <div class="field"><label>State</label><select class="select" id="regState" name="state" data-validate="required"></select><div class="error-msg">State is required.</div></div>
+          <div class="field"><label>District</label><select class="select" id="regDistrict" name="district" data-validate="required"></select><div class="error-msg">District is required.</div></div>
         </div>
         <div class="field contractor-only hidden">
           <label>GSTIN (optional)</label><input class="input" name="gst" placeholder="22AAAAA0000A1Z5">
@@ -124,6 +124,7 @@
 <script src="../../assets/js/core/db.js"></script>
 <script src="../../assets/js/core/auth.js"></script>
 <script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/geo.js"></script>
 <script src="../../assets/js/core/mask.js"></script>
 <script src="../../assets/js/core/seed.js"></script>
 <script>window.SW.seed();</script>

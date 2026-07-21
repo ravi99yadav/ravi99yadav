@@ -31,8 +31,8 @@
           <div class="field"><label>Contractor Email (optional)</label><input class="input" id="fContractorEmail"></div>
         </div>
         <div class="input-group">
-          <div class="field"><label>District</label><input class="input" id="fDistrict" data-validate="required"><div class="error-msg">District is required.</div></div>
-          <div class="field"><label>State</label><input class="input" id="fState" data-validate="required"><div class="error-msg">State is required.</div></div>
+          <div class="field"><label>State</label><select class="select" id="fState" data-validate="required"></select><div class="error-msg">State is required.</div></div>
+          <div class="field"><label>District</label><select class="select" id="fDistrict" data-validate="required"></select><div class="error-msg">District is required.</div></div>
         </div>
         <div class="input-group">
           <div class="field"><label>Start Date</label><input class="input" type="date" id="fStart"></div>
@@ -70,6 +70,7 @@
 <script src="../../assets/js/core/db.js"></script>
 <script src="../../assets/js/core/auth.js"></script>
 <script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/geo.js"></script>
 <script src="../../assets/js/core/mask.js"></script>
 <script src="../../assets/js/core/ui.js"></script>
 <script src="../../assets/js/core/seed.js"></script>

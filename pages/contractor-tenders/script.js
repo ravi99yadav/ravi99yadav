@@ -5,6 +5,8 @@
   const DB = SW.DB, U = SW.Utils;
   let view = "all";
 
+  SW.Geo.bindStateDistrict(document.getElementById("fState"), document.getElementById("fDistrict"), {});
+
   function saved(tenderId){ return DB.savedTenders.list(s=>s.userId===user.id && s.tenderId===tenderId)[0]; }
 
   function getTenders(){
@@ -47,7 +49,11 @@
   }
 
   document.getElementById("searchBtn").addEventListener("click", render);
-  document.getElementById("clearBtn").addEventListener("click", ()=>{ U.qsa(".card input,.card select").forEach(i=>i.value=""); render(); });
+  document.getElementById("clearBtn").addEventListener("click", ()=>{
+    U.qsa(".card input,.card select").forEach(i=>i.value="");
+    SW.Geo.populateDistrictSelect(document.getElementById("fDistrict"), "", null);
+    render();
+  });
   U.qsa("#viewTabs button").forEach(btn=> btn.addEventListener("click", ()=>{
     U.qsa("#viewTabs button").forEach(b=>b.classList.remove("active")); btn.classList.add("active");
     view = btn.dataset.view; render();

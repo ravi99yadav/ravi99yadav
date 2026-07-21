@@ -51,6 +51,8 @@
     document.getElementById("emptyNewProjectBtn")?.addEventListener("click", ()=> U.openModal("projectModal"));
   }
 
+  SW.Geo.bindStateDistrict(document.getElementById("mpState"), document.getElementById("mpDistrict"), {});
+
   document.getElementById("newProjectBtn").addEventListener("click", ()=> U.openModal("projectModal"));
   document.getElementById("mpSaveBtn").addEventListener("click", ()=>{
     const name = document.getElementById("mpName").value.trim();
@@ -59,7 +61,9 @@
     if(!name || !district || !state){ U.toast("Fill in project name, district and state.", {type:"danger"}); return; }
     DB.masterProjects.create({ pmId:user.id, name, district, state, description: document.getElementById("mpDescription").value.trim() });
     U.closeModal("projectModal");
-    document.getElementById("mpName").value = document.getElementById("mpDistrict").value = document.getElementById("mpState").value = document.getElementById("mpDescription").value = "";
+    document.getElementById("mpName").value = document.getElementById("mpDescription").value = "";
+    document.getElementById("mpState").value = "";
+    SW.Geo.populateDistrictSelect(document.getElementById("mpDistrict"), "", null);
     U.toast("Project created — you can now float tenders under it.", {type:"success"});
     render();
   });

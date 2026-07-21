@@ -26,7 +26,8 @@
         <div class="grid grid-4">
           <div class="field"><label>Category</label><select class="select" id="fCategory"><option value="">All</option><option>Material</option><option>Equipment</option><option>Scrap</option></select></div>
           <div class="field"><label>Condition</label><select class="select" id="fCondition"><option value="">Any</option><option>New</option><option>Good</option><option>Used</option><option>Scrap</option></select></div>
-          <div class="field"><label>District / Location</label><input class="input" id="fDistrict" placeholder="e.g. Gurugram"></div>
+          <div class="field"><label>State</label><select class="select" id="fState"></select></div>
+          <div class="field"><label>District</label><select class="select" id="fDistrict"></select></div>
           <div class="field"><label>Max Price (₹)</label><input class="input" type="number" id="fMaxPrice"></div>
         </div>
         <div class="flex gap-2"><button class="btn btn-primary" id="searchBtn">Search</button><button class="btn btn-ghost" id="clearBtn">Clear</button></div>
@@ -55,8 +56,8 @@
         <div class="field"><label>Price Unit</label><input class="input" id="lPriceUnit" placeholder="e.g. per MT / per day / lump sum"></div>
       </div>
       <div class="input-group">
-        <div class="field"><label>District</label><input class="input" id="lDistrict"></div>
-        <div class="field"><label>State</label><input class="input" id="lState"></div>
+        <div class="field"><label>State</label><select class="select" id="lState"></select></div>
+        <div class="field"><label>District</label><select class="select" id="lDistrict"></select></div>
       </div>
       <div class="field"><label>Description</label><textarea class="textarea" id="lDesc"></textarea></div>
       <div class="field"><label>Photos</label><div class="dropzone" style="padding:20px"><p style="margin:0">📷 Photo upload placeholder</p></div></div>
@@ -75,6 +76,7 @@
 <script src="../../assets/js/core/db.js"></script>
 <script src="../../assets/js/core/auth.js"></script>
 <script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/geo.js"></script>
 <script src="../../assets/js/core/mask.js"></script>
 <script src="../../assets/js/core/ui.js"></script>
 <script src="../../assets/js/core/seed.js"></script>

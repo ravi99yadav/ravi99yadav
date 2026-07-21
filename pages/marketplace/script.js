@@ -9,6 +9,9 @@
   let view = "all";
   const CATEGORY_ICON = { Material:"🧱", Equipment:"🚜", Scrap:"♻️" };
 
+  SW.Geo.bindStateDistrict(document.getElementById("fState"), document.getElementById("fDistrict"), {});
+  SW.Geo.bindStateDistrict(document.getElementById("lState"), document.getElementById("lDistrict"), {});
+
   function feeEnabled(){ return DB.settings.get("marketplaceFeeEnabled", false); }
   function feeAmount(){ return DB.settings.get("marketplaceFee", 49); }
 
@@ -16,10 +19,12 @@
     let list = DB.marketplaceListings.list(l=>l.status==="active");
     const category = document.getElementById("fCategory").value;
     const condition = document.getElementById("fCondition").value;
+    const state = document.getElementById("fState").value;
     const district = document.getElementById("fDistrict").value.trim().toLowerCase();
     const maxPrice = +document.getElementById("fMaxPrice").value||0;
     if(category) list = list.filter(l=>l.category===category);
     if(condition) list = list.filter(l=>l.condition===condition);
+    if(state) list = list.filter(l=>(l.state||"")===state);
     if(district) list = list.filter(l=>(l.district||"").toLowerCase().includes(district));
     if(maxPrice) list = list.filter(l=>l.price<=maxPrice);
     if(view==="mine") list = list.filter(l=>l.sellerId===user.id);
@@ -39,7 +44,11 @@
   }
 
   document.getElementById("searchBtn").addEventListener("click", render);
-  document.getElementById("clearBtn").addEventListener("click", ()=>{ U.qsa(".card input,.card select").forEach(i=>{ if(i.closest("#listingModal")||i.closest("#contactModal")) return; i.value=""; }); render(); });
+  document.getElementById("clearBtn").addEventListener("click", ()=>{
+    U.qsa(".card input,.card select").forEach(i=>{ if(i.closest("#listingModal")||i.closest("#contactModal")) return; i.value=""; });
+    SW.Geo.populateDistrictSelect(document.getElementById("fDistrict"), "", null);
+    render();
+  });
   U.qsa("#viewTabs button").forEach(btn=> btn.addEventListener("click", ()=>{
     U.qsa("#viewTabs button").forEach(b=>b.classList.remove("active")); btn.classList.add("active");
     view = btn.dataset.view; render();

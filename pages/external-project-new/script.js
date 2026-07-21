@@ -6,6 +6,8 @@
 
   let boqRows = [{ description:"", unit:"Cum", qty:"", rate:"" }];
 
+  SW.Geo.bindStateDistrict(document.getElementById("fState"), document.getElementById("fDistrict"), {});
+
   function renderBoq(){
     document.getElementById("boqTbody").innerHTML = boqRows.map((r,idx)=>`
       <tr data-idx="${idx}">

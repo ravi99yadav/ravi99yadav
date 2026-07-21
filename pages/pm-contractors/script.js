@@ -5,6 +5,7 @@
   const DB = SW.DB, U = SW.Utils;
   let sortKey = "rating";
 
+  SW.Geo.bindStateDistrict(document.getElementById("fState"), document.getElementById("fDistrict"), {});
   document.getElementById("fRadius").addEventListener("input", e=> document.getElementById("radiusVal").textContent = e.target.value+" km around entered district");
 
   // Note: phone/email are intentionally NOT included here — contact details
@@ -73,6 +74,8 @@
   document.getElementById("clearBtn").addEventListener("click", ()=>{
     U.qsa("#filterGrid input").forEach(i=>i.value = i.id==="fRadius"?50:"");
     document.getElementById("fTrade").value=""; document.getElementById("fRating").value="0";
+    document.getElementById("fState").value = "";
+    SW.Geo.populateDistrictSelect(document.getElementById("fDistrict"), "", null);
     document.getElementById("radiusVal").textContent = "50 km around entered district";
     applyFilters();
   });

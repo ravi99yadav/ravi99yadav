@@ -38,12 +38,15 @@
   });
   masterProjectSelect.value = (tender && tender.masterProjectId) || params.get("masterProjectId") || "";
 
+  // ---------- State / District ----------
+  SW.Geo.bindStateDistrict(document.getElementById("fState"), document.getElementById("fDistrict"), {
+    state: tender?tender.state:"", district: tender?tender.district:""
+  });
+
   // ---------- Prefill (edit mode) ----------
   if(tender){
     document.getElementById("fTitle").value = tender.title||"";
     document.getElementById("fWorkType").value = tender.workType||"Civil";
-    document.getElementById("fDistrict").value = tender.district||"";
-    document.getElementById("fState").value = tender.state||"";
     document.getElementById("fDescription").value = tender.description||"";
     document.getElementById("fStartDate").value = tender.startDate||"";
     document.getElementById("fEndDate").value = tender.endDate||"";

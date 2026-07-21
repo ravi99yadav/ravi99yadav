@@ -10,8 +10,7 @@
   document.getElementById("pEmail").value = user.email||"";
   document.getElementById("pPhone").value = user.phone||"";
   document.getElementById("pRole").value = SW.UI.roleLabel(user.role);
-  document.getElementById("pDistrict").value = user.district||"";
-  document.getElementById("pState").value = user.state||"";
+  SW.Geo.bindStateDistrict(document.getElementById("pState"), document.getElementById("pDistrict"), { state:user.state||"", district:user.district||"" });
 
   document.getElementById("savePersonalBtn").addEventListener("click", ()=>{
     const panel = document.getElementById("pName").closest(".card");
