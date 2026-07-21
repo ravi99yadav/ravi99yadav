@@ -179,6 +179,82 @@
     });
   }
 
+  const FAQS = [
+    { q:"How does bidding & L1/L2/L3 ranking work?", a:"Contractors submit item-wise, lump sum, percentage or hybrid bids on a published tender. SubletWorks totals each bid and ranks them L1 (lowest), L2, L3 automatically for the Project Manager to compare." },
+    { q:"Why are phone numbers and emails hidden in chat?", a:"To keep negotiation on-platform, SubletWorks automatically masks phone numbers, emails, UPI IDs and even spelled-out digits (in English or Hindi) until both sides complete the one-time ₹99 contact unlock for that project." },
+    { q:"How do I raise a revision on a bid?", a:"Open the tender, expand the bid under the Bids tab, and click \"Request Revision\" — add a note explaining what should change. The contractor can revise and resubmit as many times as needed." },
+    { q:"What happens after a bid is mutually accepted?", a:"Both the Project Manager and contractor pay a one-time ₹99 fee to unlock direct contact. The PM can then generate a Letter of Intent (LOI), followed by a Work Order, which automatically creates the Project Workspace." },
+    { q:"How does the MB Sheet formula engine work?", a:"Each measurement row computes Qty = Nos × Length × Breadth × Height × Factor. Use the Factor preset dropdown for Steel/TMT, Pipe, Plate or leave Factor at 1 for simple volumes. Rows sharing the same item description sum automatically in the Abstract." },
+    { q:"What is RA Bill Reconciliation?", a:"It compares your MB Sheet measured quantities against what's been cumulatively billed per BOQ item, flagging any item billed beyond what's actually been measured on site." },
+    { q:"What's an External Project?", a:"If you already have a contractor lined up outside SubletWorks, create an External Project to still use Gantt, Kanban, MB Sheet, RA Billing, DPR and Hindrance tools — no tender or bidding required." },
+    { q:"What are Extra Items?", a:"Extra Items are work items outside the original BOQ scope. A contractor can raise one with a proposed rate and justification; once the Project Manager approves it, it's automatically included in MB Sheet, RA Billing and Reconciliation." }
+  ];
+
+  function mountHelpWidget(user){
+    if(document.getElementById("globalHelpBtn")) return;
+    const fab = document.createElement("button");
+    fab.id = "globalHelpBtn"; fab.className = "help-fab no-print"; fab.title = "Help & Technical Support";
+    fab.innerHTML = "❔";
+    document.body.appendChild(fab);
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay"; overlay.id = "helpSupportModal";
+    overlay.innerHTML = `<div class="modal modal-lg">
+      <div class="modal-head"><h3>Help &amp; Technical Support</h3><button class="btn-icon" data-close-modal>✕</button></div>
+      <div class="modal-body">
+        <div class="pill-tab mb-4" id="helpTabs"><button class="active" data-htab="faq">FAQ</button><button data-htab="ticket">Contact Support</button><button data-htab="video">Video Guides</button></div>
+        <div id="helpFaqPanel">${FAQS.map(f=>`<details class="card mb-2" style="padding:12px 16px"><summary style="cursor:pointer;font-weight:600">${U().escapeHtml(f.q)}</summary><p class="mt-2" style="margin-bottom:0">${U().escapeHtml(f.a)}</p></details>`).join("")}</div>
+        <div id="helpTicketPanel" class="hidden">
+          <div class="field"><label>Category</label><select class="select" id="hsCategory"><option>Bidding / Tenders</option><option>Payments / Contact Unlock</option><option>Project Workspace</option><option>MB Sheet / RA Bill</option><option>Marketplace</option><option>Account / Login</option><option>Other</option></select></div>
+          <div class="field"><label>Priority</label><select class="select" id="hsPriority"><option>Normal</option><option>High</option><option>Urgent</option></select></div>
+          <div class="field"><label>Subject</label><input class="input" id="hsSubject" placeholder="Briefly describe the issue"></div>
+          <div class="field"><label>Message</label><textarea class="textarea" id="hsMessage" placeholder="What happened, and what were you trying to do?"></textarea></div>
+          <button class="btn btn-primary" id="hsSubmitBtn">Submit Ticket</button>
+          <div id="hsMyTickets" class="mt-5"></div>
+        </div>
+        <div id="helpVideoPanel" class="hidden">
+          <div class="empty-state"><div class="es-icon">🎬</div>Walkthrough videos for tendering, bidding, MB Sheet and RA Billing will appear here.</div>
+        </div>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+
+    fab.addEventListener("click", ()=> U().openModal("helpSupportModal"));
+    overlay.querySelectorAll("#helpTabs button").forEach(btn=> btn.addEventListener("click", ()=>{
+      overlay.querySelectorAll("#helpTabs button").forEach(b=>b.classList.remove("active")); btn.classList.add("active");
+      overlay.querySelector("#helpFaqPanel").classList.toggle("hidden", btn.dataset.htab!=="faq");
+      overlay.querySelector("#helpTicketPanel").classList.toggle("hidden", btn.dataset.htab!=="ticket");
+      overlay.querySelector("#helpVideoPanel").classList.toggle("hidden", btn.dataset.htab!=="video");
+      if(btn.dataset.htab==="ticket") renderMyTickets(user);
+    }));
+
+    function renderMyTickets(user){
+      const tickets = DB().supportTickets.list(t=>t.userId===user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+      const box = overlay.querySelector("#hsMyTickets");
+      if(!tickets.length){ box.innerHTML = ""; return; }
+      box.innerHTML = `<h4>Your Tickets</h4>` + tickets.map(t=>`
+        <div class="card mb-2" style="padding:10px 14px">
+          <div class="flex justify-between items-center"><b style="font-size:13px">${U().escapeHtml(t.subject)}</b><span class="badge ${t.status==='resolved'?'badge-success':t.status==='open'?'badge-warning':'badge-info'}">${t.status}</span></div>
+          <div class="text-muted" style="font-size:12px">${U().escapeHtml(t.category)} · ${U().relativeTime(t.createdAt)}</div>
+          ${t.adminReply ? `<div class="item-remark mt-2">💬 Support: ${U().escapeHtml(t.adminReply)}</div>` : ""}
+        </div>`).join("");
+    }
+
+    overlay.querySelector("#hsSubmitBtn").addEventListener("click", ()=>{
+      const subject = overlay.querySelector("#hsSubject").value.trim();
+      const message = overlay.querySelector("#hsMessage").value.trim();
+      if(!subject || !message){ U().toast("Please fill in both subject and message.", {type:"danger"}); return; }
+      DB().supportTickets.create({
+        userId:user.id, userName:user.name, userRole:user.role,
+        category: overlay.querySelector("#hsCategory").value, priority: overlay.querySelector("#hsPriority").value,
+        subject, message, status:"open"
+      });
+      overlay.querySelector("#hsSubject").value = ""; overlay.querySelector("#hsMessage").value = "";
+      U().toast("Support ticket submitted — our team will get back to you.", {title:"Ticket raised", type:"success"});
+      renderMyTickets(user);
+    });
+  }
+
   function mountShell(opts){
     const user = Auth().requireRole(opts.roles);
     if(!user) return null;
@@ -195,6 +271,7 @@
     U().bindRipple();
     mountCommandPalette(user.role);
     mountQuickCreate(user.role);
+    mountHelpWidget(user);
 
     const notifBtn = document.getElementById("notifBtn");
     if(notifBtn) notifBtn.addEventListener("click", ()=>{ renderNotifPanel(user); toggleDropdown("notifPanel"); });
@@ -205,7 +282,7 @@
       if(!e.target.closest("#profileBtn") && !e.target.closest("#profilePanel")) document.getElementById("profilePanel")?.classList.remove("open");
     });
     document.getElementById("logoutLink")?.addEventListener("click", e=>{ e.preventDefault(); Auth().logout(); });
-    document.getElementById("helpLink")?.addEventListener("click", e=>{ e.preventDefault(); document.getElementById("helpDrawerToggle")?.click() || U().toast("See the Help panel at the bottom of this page for guidance.",{title:"Help"}); });
+    document.getElementById("helpLink")?.addEventListener("click", e=>{ e.preventDefault(); U().openModal("helpSupportModal"); });
 
     const collapseBtn = document.getElementById("sidebarCollapseBtn");
     if(collapseBtn) collapseBtn.addEventListener("click", ()=>{

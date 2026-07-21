@@ -28,6 +28,7 @@
         <button class="tab-btn" data-tab="pricing">Pricing &amp; Offer Control</button>
         <button class="tab-btn" data-tab="analytics">Analytics</button>
         <button class="tab-btn" data-tab="fraud">Fraud Detection</button>
+        <button class="tab-btn" data-tab="support">Support Tickets</button>
         <button class="tab-btn" data-tab="audit">Audit Log</button>
       </div>
 
@@ -36,10 +37,20 @@
       <div class="tab-panel" data-tab-panel="pricing" id="panelPricing"></div>
       <div class="tab-panel" data-tab-panel="analytics" id="panelAnalytics"></div>
       <div class="tab-panel" data-tab-panel="fraud" id="panelFraud"></div>
+      <div class="tab-panel" data-tab-panel="support" id="panelSupport"></div>
       <div class="tab-panel" data-tab-panel="audit" id="panelAudit"></div>
     </main>
   </div>
 </div>
+
+<div class="modal-overlay" id="ticketModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Support Ticket</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body" id="ticketModalBody"></div>
+    <div class="modal-foot" id="ticketModalFoot"></div>
+  </div>
+</div>
+
 <script src="../../assets/js/core/db.js"></script>
 <script src="../../assets/js/core/auth.js"></script>
 <script src="../../assets/js/core/utils.js"></script>

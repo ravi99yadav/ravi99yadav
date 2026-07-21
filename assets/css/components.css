@@ -284,6 +284,16 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .unlock-price .old{text-decoration:line-through;opacity:.75;font-size:var(--fs-md);}
 .unlock-price .new{font-size:var(--fs-2xl);font-weight:800;}
 
+/* ---- Global help FAB ---- */
+.help-fab{
+  position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;
+  background:var(--sw-gradient-brand);color:#fff;border:none;font-size:20px;font-weight:700;
+  box-shadow:var(--shadow-lg);z-index:900;display:flex;align-items:center;justify-content:center;
+  transition:transform var(--t-fast) var(--ease);
+}
+.help-fab:hover{transform:scale(1.08);}
+@media (max-width:640px){.help-fab{right:16px;bottom:16px;width:46px;height:46px;font-size:17px;}}
+
 /* ---- Misc ---- */
 .divider{height:1px;background:var(--border);margin:var(--sp-4) 0;}
 .pill-tab{display:inline-flex;padding:4px;background:var(--surface-2);border-radius:var(--r-pill);gap:2px;max-width:100%;overflow-x:auto;}

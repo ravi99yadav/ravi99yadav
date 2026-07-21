@@ -109,6 +109,8 @@
     U.closeModal("forgotModal");
   });
 
+  document.getElementById("loginHelpBtn").addEventListener("click", ()=> U.openModal("loginHelpModal"));
+
   U.bindModalDismiss();
   U.bindRipple();
   U.initTheme();

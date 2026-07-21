@@ -12,7 +12,7 @@
     "revisions","contactUnlocks","lois","workOrders","projects","ganttTasks",
     "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs",
     "hindrances","paymentRequests","marketplaceListings","marketplaceInquiries",
-    "notifications","auditLogs","savedTenders","files","shares","settings"
+    "notifications","auditLogs","savedTenders","files","shares","supportTickets","settings"
   ];
 
   function loadRaw(){

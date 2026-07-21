@@ -32,8 +32,8 @@
   function unlock(){ return DB.contactUnlocks.list(c=>c.tenderId===tender.id)[0]; }
 
   function statusBadge(status){
-    const map = { submitted:"badge-info", revision_requested:"badge-warning", pm_accepted:"badge-accent", mutually_accepted:"badge-success", rejected:"badge-danger", not_selected:"badge-neutral" };
-    const label = { submitted:"Submitted", revision_requested:"Revision Requested", pm_accepted:"Accepted by PM — awaiting your confirmation", mutually_accepted:"Mutually Accepted", rejected:"Rejected", not_selected:"Not Selected" };
+    const map = { submitted:"badge-info", revision_requested:"badge-warning", pm_accepted:"badge-accent", mutually_accepted:"badge-success", rejected:"badge-danger", not_selected:"badge-neutral", withdrawn:"badge-neutral" };
+    const label = { submitted:"Submitted", revision_requested:"Revision Requested", pm_accepted:"Accepted by PM — awaiting your confirmation", mutually_accepted:"Mutually Accepted", rejected:"Rejected", not_selected:"Not Selected", withdrawn:"Withdrawn by You" };
     return `<span class="badge ${map[status]||'badge-neutral'}">${label[status]||status}</span>`;
   }
 
@@ -205,6 +205,7 @@
     const bidItemsList = DB.bidItems.list(bi=>bi.bidId===bid.id);
     const comments = DB.comments.list(c=>c.bidId===bid.id && !c.boqItemId).sort((a,b)=>new Date(a.createdAt)-new Date(b.createdAt));
     const canRevise = bid.status==="revision_requested";
+    const canWithdraw = ["submitted","revision_requested"].includes(bid.status);
     document.getElementById("panelBids").innerHTML = `
       <div class="card">
         <div class="flex justify-between items-center mb-3"><h3>Your Bid</h3>${statusBadge(bid.status)}</div>
@@ -216,9 +217,13 @@
           <td>${canRevise? `<input class="input" data-revise-rate="${it.id}" value="${bi.rate}" style="max-width:110px">` : U.fmtINR(bi.rate)}</td><td>${U.fmtINR(bi.amount)}</td></tr>`;
         }).join("")}</tbody></table></div>
         <b>Total: ${U.fmtINR(bidTotal(bid))}</b>` : `<p><b>Bid Amount:</b> ${U.fmtINR(bidTotal(bid))} (${bid.mode})</p>`}
-        ${canRevise ? `<button class="btn btn-primary mt-3" id="resubmitBtn">Resubmit Revised Bid</button>` : ""}
+        <div class="flex gap-2 mt-3">
+          ${canRevise ? `<button class="btn btn-primary" id="resubmitBtn">Resubmit Revised Bid</button>` : ""}
+          ${canWithdraw ? `<button class="btn btn-outline" id="withdrawBidBtn">Withdraw Bid</button>` : ""}
+        </div>
         ${bid.status==="pm_accepted" ? `<div class="card mt-3" style="background:var(--surface-2)"><p><b>The Project Manager has accepted your bid.</b> Confirm to finalize acceptance, or request changes if terms need discussion.</p>
           <div class="flex gap-2"><button class="btn btn-success" id="confirmAcceptBtn">Confirm &amp; Accept</button><button class="btn btn-outline" id="requestChangeBtn">Request Changes</button></div></div>` : ""}
+        ${bid.status==="withdrawn" ? `<p class="hint mt-3">You withdrew this bid. Contact the Project Manager if you'd like to submit a new one, or check for a new tender if this one has closed.</p>` : ""}
         <h4 class="mt-5">Negotiation</h4>
         <div class="chat-window" style="height:300px">
           <div class="chat-messages" id="chatMsgs-${bid.id}">${comments.map(c=>chatBubble(c)).join("") || `<p class="text-muted text-center mt-4">No messages yet.</p>`}</div>
@@ -247,6 +252,13 @@
     document.getElementById("requestChangeBtn")?.addEventListener("click", ()=>{
       DB.bids.update(bid.id, { status:"revision_requested" });
       U.toast("Marked for revision. Use the chat below to explain what needs to change.", {type:"warning"});
+      renderAll();
+    });
+    document.getElementById("withdrawBidBtn")?.addEventListener("click", ()=>{
+      if(!confirm("Withdraw this bid? The Project Manager will no longer see it in comparison, and you won't be able to resubmit unless invited again.")) return;
+      DB.bids.update(bid.id, { status:"withdrawn" });
+      DB.notifications.create({ userId:tender.pmId, title:"Bid withdrawn", body:`${user.name} withdrew their bid on "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
+      U.toast("Your bid has been withdrawn.", {type:"warning"});
       renderAll();
     });
   }

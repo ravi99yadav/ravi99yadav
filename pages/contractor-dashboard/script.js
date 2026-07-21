@@ -27,7 +27,7 @@
 
   document.getElementById("bidsList").innerHTML = bids.length ? bids.slice(0,6).map(b=>{
     const t = DB.tenders.get(b.tenderId);
-    const map = { submitted:"badge-info", revision_requested:"badge-warning", pm_accepted:"badge-accent", mutually_accepted:"badge-success", rejected:"badge-danger", not_selected:"badge-neutral" };
+    const map = { submitted:"badge-info", revision_requested:"badge-warning", pm_accepted:"badge-accent", mutually_accepted:"badge-success", rejected:"badge-danger", not_selected:"badge-neutral", withdrawn:"badge-neutral" };
     return `<div class="attn-row"><div><b>${U.escapeHtml(t.title)}</b><div class="text-muted" style="font-size:12px">${t.district}, ${t.state}</div></div>
       <div class="flex gap-2 items-center"><span class="badge ${map[b.status]||'badge-neutral'}">${b.status.replace(/_/g," ")}</span><a class="btn btn-sm btn-outline" href="../tender-detail/index.html?id=${t.id}">Open</a></div></div>`;
   }).join("") : `<div class="empty-state">You haven't submitted any bids yet. <a href="../contractor-tenders/index.html">Find tenders →</a></div>`;

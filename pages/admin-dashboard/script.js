@@ -125,7 +125,49 @@
       <tbody>${logs.map(l=>{ const u = DB.users.get(l.userId); return `<tr><td>${U.fmtDateTime(l.at)}</td><td>${l.entity}</td><td>${l.action}</td><td>${u?U.escapeHtml(u.name):'System'}</td></tr>`; }).join("")}</tbody></table></div></div>`;
   }
 
-  renderKPIs(); renderApprovals(); renderPayments(); renderPricing(); renderAnalytics(); renderFraud(); renderAudit();
+  function renderSupport(){
+    const tickets = DB.supportTickets.list().sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const open = tickets.filter(t=>t.status==="open").length;
+    document.getElementById("panelSupport").innerHTML = `
+      <div class="card"><div class="flex justify-between items-center mb-3"><h3>Support Tickets</h3><span class="badge badge-warning">${open} open</span></div>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th>Subject</th><th>From</th><th>Category</th><th>Priority</th><th>Status</th><th>Raised</th><th></th></tr></thead>
+      <tbody>${tickets.length ? tickets.map(t=>`<tr>
+        <td>${U.escapeHtml(t.subject)}</td><td>${U.escapeHtml(t.userName)} <span class="badge badge-neutral">${SW.UI.roleLabel(t.userRole)}</span></td>
+        <td>${U.escapeHtml(t.category)}</td><td><span class="badge ${t.priority==='Urgent'?'badge-danger':t.priority==='High'?'badge-warning':'badge-neutral'}">${t.priority}</span></td>
+        <td><span class="badge ${t.status==='resolved'?'badge-success':t.status==='open'?'badge-warning':'badge-info'}">${t.status}</span></td>
+        <td>${U.relativeTime(t.createdAt)}</td>
+        <td><button class="btn btn-sm btn-outline" data-ticket="${t.id}">View / Reply</button></td>
+      </tr>`).join("") : `<tr><td colspan="7"><div class="empty-state">No support tickets yet.</div></td></tr>`}</tbody></table></div></div>`;
+    document.getElementById("panelSupport").addEventListener("click", e=>{
+      const btn = e.target.closest("[data-ticket]"); if(!btn) return;
+      openTicket(btn.dataset.ticket);
+    });
+  }
+  function openTicket(id){
+    const t = DB.supportTickets.get(id);
+    document.getElementById("ticketModalBody").innerHTML = `
+      <p><b>${U.escapeHtml(t.subject)}</b></p>
+      <p class="text-muted" style="font-size:12px">${U.escapeHtml(t.userName)} (${SW.UI.roleLabel(t.userRole)}) · ${t.category} · ${U.fmtDateTime(t.createdAt)}</p>
+      <p class="mt-3">${U.escapeHtml(t.message)}</p>
+      <div class="field mt-4"><label>Admin Reply</label><textarea class="textarea" id="ticketReply">${U.escapeHtml(t.adminReply||"")}</textarea></div>
+      <div class="field"><label>Status</label><select class="select" id="ticketStatus">
+        <option value="open" ${t.status==='open'?'selected':''}>Open</option>
+        <option value="in_progress" ${t.status==='in_progress'?'selected':''}>In Progress</option>
+        <option value="resolved" ${t.status==='resolved'?'selected':''}>Resolved</option>
+      </select></div>`;
+    document.getElementById("ticketModalFoot").innerHTML = `<button class="btn btn-primary" id="ticketSaveBtn">Save &amp; Notify User</button>`;
+    U.openModal("ticketModal");
+    document.getElementById("ticketSaveBtn").addEventListener("click", ()=>{
+      const adminReply = document.getElementById("ticketReply").value.trim();
+      const status = document.getElementById("ticketStatus").value;
+      DB.supportTickets.update(t.id, {adminReply, status});
+      DB.notifications.create({ userId:t.userId, title:"Support ticket update", body:`Your ticket "${t.subject}" is now ${status.replace("_"," ")}.`, read:false });
+      U.toast("Ticket updated.", {type:"success"});
+      U.closeModal("ticketModal"); renderSupport();
+    });
+  }
+
+  renderKPIs(); renderApprovals(); renderPayments(); renderPricing(); renderAnalytics(); renderFraud(); renderSupport(); renderAudit();
   U.initTabs();
 
   SW.UI.helpSection(document.querySelector(".app-content"), "Admin Panel", [

@@ -45,7 +45,14 @@
 
   /* ================= BOQ / RATE / MEASUREMENT HELPERS (shared by RA Bill & Reconciliation) ================= */
   function projectBoqItems(){
-    return project.tenderId ? DB.boqItems.list(i=>i.tenderId===project.tenderId).sort((a,b)=>a.srNo-b.srNo) : DB.boqItems.list(i=>i.projectId===project.id).sort((a,b)=>a.srNo-b.srNo);
+    const official = project.tenderId
+      ? DB.boqItems.list(i=>i.tenderId===project.tenderId)
+      : DB.boqItems.list(i=>i.projectId===project.id && !i.isExtra);
+    const approvedExtras = DB.boqItems.list(i=>i.projectId===project.id && i.isExtra && i.status==="approved");
+    return official.concat(approvedExtras).sort((a,b)=>a.srNo-b.srNo);
+  }
+  function extraItems(){
+    return DB.boqItems.list(i=>i.projectId===project.id && i.isExtra).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
   }
   function itemRate(boqItem){
     if(boqItem.rate!=null) return boqItem.rate;
@@ -428,6 +435,88 @@
     document.getElementById("mbAbstract").innerHTML = list.length ? `<table class="dtable"><thead><tr><th>Item</th><th>Unit</th><th>Total Qty</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.escapeHtml(g.desc)}</td><td>${g.unit}</td><td><b>${g.qty.toFixed(3)}</b></td></tr>`).join("")}</tbody></table>` : `<p class="text-muted">Add measurement rows above to see the abstract.</p>`;
   }
 
+  /* ================= EXTRA ITEMS ================= */
+  function extraStatusBadge(status){
+    return { pending:"badge-warning", approved:"badge-success", rejected:"badge-danger" }[status] || "badge-neutral";
+  }
+  function renderExtraItems(){
+    const items = extraItems();
+    const panel = document.getElementById("panelExtraItems");
+    panel.innerHTML = `
+      <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:520px">Extra Items are work outside the original BOQ scope. Once approved, they automatically flow into the MB Sheet reference, RA Bill claims and Reconciliation alongside the official BOQ.</p>
+        ${!isPM ? `<button class="btn btn-primary btn-sm" id="addExtraBtn">+ Raise Extra Item</button>` : ""}
+      </div>
+      ${items.length ? items.map(it=>`
+        <div class="card mb-3">
+          <div class="flex justify-between items-start" style="flex-wrap:wrap;gap:10px">
+            <div><b>${U.escapeHtml(it.description)}</b><div class="text-muted" style="font-size:12px">${it.unit} · Qty ${it.qty} · Rate ${U.fmtINR(it.rate)} · Value ${U.fmtINR((it.qty||0)*(it.rate||0))}</div></div>
+            <span class="badge ${extraStatusBadge(it.status)}">${it.status}</span>
+          </div>
+          <p style="font-size:13px" class="mt-2 mb-2"><b>Justification:</b> ${U.escapeHtml(it.justification||"—")}</p>
+          ${it.pmNote ? `<div class="item-remark mb-2">💬 PM: ${U.escapeHtml(it.pmNote)}</div>` : ""}
+          ${isPM && it.status==="pending" ? `
+            <div class="input-group mb-2">
+              <div class="field" style="margin-bottom:0"><label>Approved Rate (₹)</label><input class="input" type="number" value="${it.rate}" data-approve-rate="${it.id}"></div>
+            </div>
+            <div class="flex gap-2">
+              <button class="btn btn-success btn-sm" data-approve-extra="${it.id}">Approve</button>
+              <button class="btn btn-danger btn-sm" data-reject-extra="${it.id}">Reject</button>
+            </div>` : ""}
+        </div>`).join("") : `<div class="empty-state"><div class="es-icon">➕</div>No extra items raised yet.</div>`}`;
+    document.getElementById("addExtraBtn")?.addEventListener("click", openExtraItemModal);
+    panel.addEventListener("click", e=>{
+      const approve = e.target.closest("[data-approve-extra]");
+      const reject = e.target.closest("[data-reject-extra]");
+      if(approve){
+        const rateInput = panel.querySelector(`[data-approve-rate="${approve.dataset.approveExtra}"]`);
+        const rate = +rateInput.value || 0;
+        DB.boqItems.update(approve.dataset.approveExtra, { status:"approved", rate });
+        const item = DB.boqItems.get(approve.dataset.approveExtra);
+        DB.notifications.create({ userId:item.requestedBy, title:"Extra item approved", body:`"${item.description}" was approved at ${U.fmtINR(rate)}/${item.unit} and added to billing.`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=extraitems" });
+        U.toast("Extra item approved and added to the project BOQ.", {type:"success"});
+        renderExtraItems(); renderMB(); renderRABill(); renderReconciliation();
+      }
+      if(reject){
+        const note = prompt("Reason for rejecting this extra item (visible to the contractor):")||"";
+        DB.boqItems.update(reject.dataset.rejectExtra, { status:"rejected", pmNote:note });
+        const item = DB.boqItems.get(reject.dataset.rejectExtra);
+        DB.notifications.create({ userId:item.requestedBy, title:"Extra item rejected", body:`"${item.description}" was not approved.`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=extraitems" });
+        U.toast("Extra item rejected.", {type:"warning"});
+        renderExtraItems();
+      }
+    });
+  }
+  function openExtraItemModal(){
+    document.getElementById("genericModalTitle").textContent = "Raise Extra Item";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="field"><label>Description</label><input class="input" id="exDesc" placeholder="e.g. Additional shear wall not in original drawings"></div>
+      <div class="input-group">
+        <div class="field"><label>Unit</label><input class="input" id="exUnit" value="Cum"></div>
+        <div class="field"><label>Estimated Qty</label><input class="input" type="number" id="exQty"></div>
+        <div class="field"><label>Proposed Rate (₹)</label><input class="input" type="number" id="exRate"></div>
+      </div>
+      <div class="field"><label>Justification</label><textarea class="textarea" id="exJustification" placeholder="Why is this extra necessary, and what site/design condition triggered it?"></textarea></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="exSave">Submit for Approval</button>`;
+    U.openModal("genericModal");
+    document.getElementById("exSave").addEventListener("click", ()=>{
+      const description = document.getElementById("exDesc").value.trim();
+      const qty = +document.getElementById("exQty").value||0;
+      const rate = +document.getElementById("exRate").value||0;
+      if(!description || !qty || !rate){ U.toast("Fill in description, quantity and proposed rate.", {type:"danger"}); return; }
+      const existing = extraItems();
+      const item = DB.boqItems.create({
+        projectId:project.id, isExtra:true, srNo: 9000+existing.length+1,
+        description, unit: document.getElementById("exUnit").value.trim()||"Nos", qty, rate,
+        justification: document.getElementById("exJustification").value.trim(),
+        status:"pending", requestedBy:user.id
+      });
+      DB.notifications.create({ userId:project.pmId, title:"New extra item raised", body:`"${item.description}" needs approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=extraitems" });
+      U.closeModal("genericModal"); renderExtraItems();
+      U.toast("Extra item submitted for approval.", {type:"success"});
+    });
+  }
+
   /* ================= RA BILL ================= */
   function renderRABill(){
     const bills = DB.raBills.list(r=>r.projectId===project.id).sort((a,b)=>new Date(b.billDate)-new Date(a.billDate));
@@ -684,7 +773,7 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderMB(); renderRABill(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderMB(); renderExtraItems(); renderRABill(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
@@ -696,6 +785,7 @@
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
     "MB Sheet: add measurement rows per item — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate. The abstract below sums all rows per item automatically.",
     "RA Bill: for item-wise BOQs, claim against each item using % complete or a manual cumulative quantity — this-bill qty/amount is auto-computed from the last billed cumulative. Retention, advance recovery, GST and TDS are then calculated automatically. Project Managers approve or reject.",
+    "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",
     "DPR: log daily labour, equipment, weather and work done — useful for dispute resolution and progress tracking.",
     "Hindrance: contractors report blockers (material delay, drawings, permits, etc.); Project Managers acknowledge and resolve them.",
