@@ -1511,6 +1511,107 @@
     w.document.close();
   }
 
+  /* ================= MATERIAL INWARD (GRN) ================= */
+  function grnHasVariance(grn){
+    return (grn.items||[]).some(i => (+i.receivedQty||0) < (+i.orderedQty||0) || (+i.damagedQty||0) > 0);
+  }
+  function renderGRN(){
+    const list = DB.materialInwards.list(g=>g.projectId===project.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const pos = DB.purchaseOrders.list(p=>p.projectId===project.id);
+    const vehicles = DB.vehicleLogs.list(v=>v.projectId===project.id);
+    const panel = document.getElementById("panelGRN");
+    panel.innerHTML = `
+      <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:520px">Record what actually arrived against a Purchase Order — quantity, damage or shortfall vs. what was ordered — before goods are accepted into store.</p>
+        <button class="btn btn-primary btn-sm" id="newGRNBtn" ${!pos.length?'disabled title="Raise a Purchase Order first"':''}>+ Record Goods Received</button>
+      </div>
+      ${list.length ? list.map((g,gi)=>{
+        const po = pos.find(p=>p.id===g.poId);
+        const variance = grnHasVariance(g);
+        return `<div class="card mb-3 card-enter" style="animation-delay:${gi*40}ms">
+          <div class="flex justify-between items-start" style="flex-wrap:wrap;gap:10px">
+            <div><b>${U.escapeHtml(g.grnNo)}</b> ${po?`— against ${U.escapeHtml(po.poNo)} (${U.escapeHtml(po.vendorName)})`:""}
+              <div class="text-muted" style="font-size:12px">${(g.items||[]).length} item(s) · Received ${U.fmtDateTime(g.createdAt)}</div>
+            </div>
+            <span class="badge ${variance?'badge-warning':'badge-success'}">${variance?'⚠ Variance':'Matches PO'}</span>
+          </div>
+          <div class="table-wrap mt-2"><table class="dtable"><thead><tr><th>Item</th><th>Ordered</th><th>Received</th><th>Damaged/Short</th></tr></thead>
+          <tbody>${(g.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${i.orderedQty} ${U.escapeHtml(i.unit)}</td><td>${i.receivedQty} ${U.escapeHtml(i.unit)}</td><td>${i.damagedQty>0?`<span style="color:var(--sw-danger)">${i.damagedQty} ${U.escapeHtml(i.unit)}</span>`:"—"}</td></tr>`).join("")}</tbody></table></div>
+          ${g.notes?`<p class="text-muted mt-2" style="font-size:12px">📝 ${U.escapeHtml(g.notes)}</p>`:""}
+          <div class="flex gap-2 mt-3"><button class="btn btn-sm btn-outline" data-print-grn="${g.id}">🖨 Print GRN</button></div>
+        </div>`;
+      }).join("") : `<div class="empty-state"><div class="es-icon">📦</div>No material inward entries yet.</div>`}`;
+
+    document.getElementById("newGRNBtn").addEventListener("click", ()=> openGRNModal(pos, vehicles));
+    panel.querySelectorAll("[data-print-grn]").forEach(b=> b.addEventListener("click", ()=> printGRN(DB.materialInwards.get(b.dataset.printGrn), pos.find(p=>p.id===DB.materialInwards.get(b.dataset.printGrn).poId))));
+  }
+
+  function openGRNModal(pos, vehicles){
+    document.getElementById("genericModalTitle").textContent = "Record Goods Received";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="field"><label>Against Purchase Order</label><select class="select" id="grnPO">${pos.map(p=>`<option value="${p.id}">${U.escapeHtml(p.poNo)} — ${U.escapeHtml(p.vendorName)}</option>`).join("")}</select></div>
+      ${vehicles.length ? `<div class="field"><label>Delivery Vehicle (optional)</label><select class="select" id="grnVehicle"><option value="">— None —</option>${vehicles.map(v=>`<option value="${v.id}">${U.escapeHtml(v.vehicleNo)} — ${U.escapeHtml(v.driverName)}</option>`).join("")}</select></div>` : ""}
+      <div class="field"><label>Items Received</label>
+        <div class="table-wrap"><table class="dtable"><thead><tr><th>Item</th><th style="width:110px">Ordered</th><th style="width:110px">Received</th><th style="width:110px">Damaged/Short</th></tr></thead>
+        <tbody id="grnItemsTbody"></tbody></table></div>
+      </div>
+      <div class="field"><label>Notes (optional)</label><textarea class="textarea" id="grnNotes" placeholder="e.g. 2 bags torn on arrival, credit note requested from vendor"></textarea></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="grnSaveBtn">Save Goods Received Note</button>`;
+    U.openModal("genericModal");
+
+    function populateItems(poId){
+      const po = pos.find(p=>p.id===poId);
+      const tbody = document.getElementById("grnItemsTbody");
+      tbody.innerHTML = (po?.items||[]).map(i=>`<tr data-desc="${U.escapeHtml(i.desc)}" data-unit="${U.escapeHtml(i.unit)}" data-ordered="${i.qty}">
+        <td>${U.escapeHtml(i.desc)}</td><td>${i.qty} ${U.escapeHtml(i.unit)}</td>
+        <td><input class="input" type="number" data-field="receivedQty" value="${i.qty}"></td>
+        <td><input class="input" type="number" data-field="damagedQty" value="0"></td>
+      </tr>`).join("");
+    }
+    document.getElementById("grnPO").addEventListener("change", e=> populateItems(e.target.value));
+    populateItems(pos[0]?.id);
+
+    document.getElementById("grnSaveBtn").addEventListener("click", ()=>{
+      const poId = document.getElementById("grnPO").value;
+      const items = U.qsa("#grnItemsTbody tr").map(tr=>({
+        desc: tr.dataset.desc, unit: tr.dataset.unit, orderedQty: +tr.dataset.ordered,
+        receivedQty: +tr.querySelector('[data-field="receivedQty"]').value||0,
+        damagedQty: +tr.querySelector('[data-field="damagedQty"]').value||0
+      }));
+      const existing = DB.materialInwards.list(g=>g.projectId===project.id);
+      DB.materialInwards.create({
+        projectId:project.id, grnNo:"SW/GRN/"+new Date().getFullYear()+"/"+String(existing.length+1).padStart(4,"0"),
+        poId, vehicleLogId: document.getElementById("grnVehicle") ? (document.getElementById("grnVehicle").value||null) : null,
+        items, notes: document.getElementById("grnNotes").value.trim(), receivedBy:user.id
+      });
+      U.closeModal("genericModal"); renderGRN();
+      U.toast("Goods Received Note saved.", {type:"success"});
+    });
+  }
+
+  function printGRN(g, po){
+    const rows = (g.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${U.escapeHtml(i.unit)}</td><td>${i.orderedQty}</td><td>${i.receivedQty}</td><td>${i.damagedQty>0?i.damagedQty:"—"}</td></tr>`).join("");
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>${U.escapeHtml(g.grnNo)} — Goods Received Note</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <div class="brand">SubletWorks.com</div>
+      <div class="title">Goods Received Note</div>
+      <p style="font-size:13px"><b>GRN No:</b> ${U.escapeHtml(g.grnNo)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(g.createdAt)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
+      ${po?`<p style="font-size:13px"><b>Against PO:</b> ${U.escapeHtml(po.poNo)} &nbsp;|&nbsp; <b>Vendor:</b> ${U.escapeHtml(po.vendorName)}</p>`:""}
+      <table><thead><tr><th>Description</th><th>Unit</th><th>Ordered</th><th>Received</th><th>Damaged/Short</th></tr></thead><tbody>${rows}</tbody></table>
+      ${g.notes?`<p style="font-size:13px"><b>Notes:</b> ${U.escapeHtml(g.notes)}</p>`:""}
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${grnHasVariance(g)?'⚠ Variance from PO':'Matches PO'}</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
+  }
+
   /* ================= RECONCILIATION ================= */
   function renderReconciliation(){
     const items = projectBoqItems();
@@ -1953,11 +2054,12 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
   document.querySelector('#wsTabs [data-tab="vehicle"]').addEventListener("click", renderVehicle);
+  document.querySelector('#wsTabs [data-tab="grn"]').addEventListener("click", renderGRN);
   const requestedTab = params.get("tab");
   if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
@@ -1976,6 +2078,7 @@
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Purchase Orders: raise a PO to any material vendor with an item table (paste from Excel supported), then record the vendor's Proforma Invoice (PI number, validity, GST%, advance%) once received. Status moves Draft → Sent → PI Received → Confirmed → Goods Received, with a professional print view for both the PO and the PI.",
     "Vehicle Log: log every transport vehicle entering site (material delivery, equipment, waste removal) with driver details, an optional link to a Purchase Order, and a safety checklist (tyres, brakes, lights, documents, license, load secured). Any failed check flags the entry; print a Gate Pass or mark the vehicle's exit once it leaves.",
+    "Material Inward: record what actually arrived against a Purchase Order — the item list auto-fills from the PO with ordered quantity, and you enter what was actually received plus any damaged/short quantity. Any shortfall or damage is automatically flagged as a variance, with a printable Goods Received Note (GRN).",
     "Payment Requests: a lightweight way to formally request release of funds against measured or billed work."
   ]);
 })();
