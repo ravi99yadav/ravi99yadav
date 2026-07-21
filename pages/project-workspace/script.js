@@ -1077,18 +1077,62 @@
     const b = DB.raBills.get(id);
     const retention = b.currentGrossAmount*b.retentionPct/100, gst=b.currentGrossAmount*b.gstPct/100, tds=b.currentGrossAmount*b.tdsPct/100;
     const net = b.currentGrossAmount - retention - b.advanceRecovery - tds + gst;
+    const pm = DB.users.get(project.pmId);
+    const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
+    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : ((DB.users.get(project.contractorId)||{}).name||"—");
+    const items = projectBoqItems();
+    const billItems = DB.raBillItems.list(i=>i.raBillId===b.id);
+    const itemRows = billItems.length ? billItems.map(bi=>{
+      const it = items.find(x=>x.id===bi.boqItemId) || DB.boqItems.get(bi.boqItemId);
+      const boqQty = it ? it.qty : 0;
+      const rate = bi.rate;
+      const prevCum = bi.cumulativeQty - bi.thisBillQty;
+      return `<tr>
+        <td>${U.escapeHtml(it?it.description:"—")}</td><td>${it?it.unit:""}</td><td>${boqQty}</td><td>${U.fmtINR(rate)}</td>
+        <td>${prevCum.toFixed(2)}</td><td>${bi.thisBillQty.toFixed(2)}</td><td>${bi.cumulativeQty.toFixed(2)}</td><td>${U.fmtINR(bi.amount)}</td>
+      </tr>`;
+    }).join("") : "";
     const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${b.billNo}</title></head><body style="font-family:Arial;padding:40px">
-      <h2>RA Bill — ${b.billNo}</h2><p>${project.name} · ${U.fmtDate(b.billDate)}</p>
-      <table border="1" cellpadding="8" style="border-collapse:collapse;width:100%">
-      <tr><td>Previous Bill</td><td>${U.fmtINR(b.previousBillAmount)}</td></tr>
-      <tr><td>Current Gross</td><td>${U.fmtINR(b.currentGrossAmount)}</td></tr>
+    w.document.write(`<html><head><title>${b.billNo}</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
+      .meta{text-align:right;font-size:12px;color:#555;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .summary td:first-child{width:260px;}
+      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
+      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+      @media print{ .no-print{display:none;} }
+    </style></head><body>
+      <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
+      <div class="title">Running Account (RA) Bill</div>
+      <p style="font-size:13px"><b>Bill No:</b> ${b.billNo} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(b.billDate)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Status:</b> ${b.status}</p>
+
+      ${itemRows ? `<h4>Item-wise Claim (against BOQ &amp; MB Abstract)</h4>
+      <table><thead><tr><th>BOQ Item</th><th>Unit</th><th>BOQ Qty</th><th>Rate</th><th>Prev. Cum. Qty</th><th>This Bill Qty</th><th>Cum. Qty</th><th>Amount</th></tr></thead>
+      <tbody>${itemRows}</tbody></table>` : `<p style="font-size:13px;color:#555">This bill was raised as a manual gross-amount claim (no item-wise BOQ breakdown available).</p>`}
+
+      <h4>Bill Summary</h4>
+      <table class="summary">
+      <tr><td>Previous Bill Amount</td><td>${U.fmtINR(b.previousBillAmount)}</td></tr>
+      <tr><td>Current Gross Claimed</td><td>${U.fmtINR(b.currentGrossAmount)}</td></tr>
       <tr><td>Retention (${b.retentionPct}%)</td><td>-${U.fmtINR(retention)}</td></tr>
       <tr><td>Advance Recovery</td><td>-${U.fmtINR(b.advanceRecovery)}</td></tr>
       <tr><td>TDS (${b.tdsPct}%)</td><td>-${U.fmtINR(tds)}</td></tr>
       <tr><td>GST (${b.gstPct}%)</td><td>+${U.fmtINR(gst)}</td></tr>
       <tr><td><b>Net Payable</b></td><td><b>${U.fmtINR(net)}</b></td></tr>
-      </table><script>window.print()<\/script></body></html>`);
+      </table>
+
+      <div class="signoff">
+        <div>${U.escapeHtml(contractorName)}<br>Contractor</div>
+        <div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div>
+      </div>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Bill Status: ${b.status}</span></div>
+      <script>window.print()<\/script></body></html>`);
     w.document.close();
   }
 
@@ -1153,12 +1197,47 @@
   }
 
   /* ================= HINDRANCE ================= */
+  const HINDRANCE_TYPES = [
+    { name:"Material Delay", desc:"Required material not available or delivery delayed by supplier." },
+    { name:"Drawing Delay", desc:"Approved-for-construction drawings not issued or revised drawings awaited." },
+    { name:"Shutdown", desc:"Planned or unplanned shutdown of site/utility/plant halting work." },
+    { name:"Rain", desc:"Work stopped or slowed due to rain/weather." },
+    { name:"Power", desc:"Power outage affecting equipment or site operations." },
+    { name:"Permit", desc:"Statutory approval/permit/NOC pending from authority." },
+    { name:"Client Delay", desc:"Decision, handover, or access delayed by the client/PM side." },
+    { name:"Other", desc:"Any other hindrance not covered above — specify in description." }
+  ];
+  function computeEOT(hindrances){
+    const ranges = hindrances.filter(h=>h.delayFrom && h.delayTo).map(h=>({from:new Date(h.delayFrom), to:new Date(h.delayTo), items:[h]})).sort((a,b)=>a.from-b.from);
+    const merged = [];
+    ranges.forEach(r=>{
+      const last = merged[merged.length-1];
+      if(last && r.from <= new Date(last.to.getTime()+86400000)){
+        if(r.to > last.to) last.to = r.to;
+        last.items.push(r.items[0]);
+      } else merged.push({from:r.from, to:r.to, items:r.items.slice()});
+    });
+    const totalDays = merged.reduce((s,m)=> s + (U.daysBetween(m.from,m.to)+1), 0);
+    return { totalDays, merged };
+  }
   function renderHindrance(){
     const list = DB.hindrances.list(h=>h.projectId===project.id).sort((a,b)=>new Date(b.raisedAt)-new Date(a.raisedAt));
-    document.getElementById("panelHindrance").innerHTML = `
+    const qualifying = list.filter(h=> h.status==="acknowledged" || h.status==="resolved");
+    const eot = computeEOT(qualifying);
+    const panel = document.getElementById("panelHindrance");
+    panel.innerHTML = `
       <div class="flex justify-between mb-3"><h3>Hindrance Register</h3>${canRaiseSiteActions?'<button class="btn btn-primary btn-sm" id="newHindBtn">+ Raise Hindrance</button>':''}</div>
+      <div class="card mb-4" style="border-left:4px solid var(--sw-accent)">
+        <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
+          <div><b>⏱ EOT (Extension of Time) Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Computed from acknowledged/resolved hindrances with a delay period set — overlapping dates across hindrances are merged so days are never double-counted.</p></div>
+          <div class="flex gap-3 items-center">
+            <div style="text-align:center"><div style="font-size:22px;font-weight:800">${eot.totalDays}</div><div class="text-muted" style="font-size:11px">day(s) EOT</div></div>
+            ${isPM ? `<button class="btn btn-outline btn-sm" id="genEOTBtn" ${!eot.totalDays?'disabled':''}>Generate EOT Letter</button>` : ""}
+          </div>
+        </div>
+      </div>
       ${list.length ? list.map(h=>`<div class="hindrance-card">
-        <div><div class="flex gap-2 items-center mb-1"><span class="badge badge-warning">${h.type}</span><span class="badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span></div>
+        <div><div class="flex gap-2 items-center mb-1"><span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
         <p style="font-size:13px;margin:0">${U.escapeHtml(h.description)}</p><span class="text-muted" style="font-size:11px">${U.relativeTime(h.raisedAt)}</span></div>
         ${isPM && h.status==="pending" ? `<div class="flex gap-2"><button class="btn btn-sm btn-outline" data-ack="${h.id}">Acknowledge</button><button class="btn btn-sm btn-success" data-resolve="${h.id}">Mark Resolved</button></div>` : ""}
         ${isPM && h.status==="acknowledged" ? `<button class="btn btn-sm btn-success" data-resolve="${h.id}">Mark Resolved</button>` : ""}
@@ -1166,23 +1245,79 @@
     document.getElementById("newHindBtn")?.addEventListener("click", ()=>{
       document.getElementById("genericModalTitle").textContent = "Raise Hindrance";
       document.getElementById("genericModalBody").innerHTML = `
-        <div class="field"><label>Type</label><select class="select" id="hType"><option>Material Delay</option><option>Drawing Delay</option><option>Shutdown</option><option>Rain</option><option>Power</option><option>Permit</option><option>Client Delay</option></select></div>
+        <div class="field"><label>Type</label><select class="select" id="hType">${HINDRANCE_TYPES.map(t=>`<option value="${t.name}">${t.name}</option>`).join("")}</select><p class="hint mt-1" id="hTypeDesc">${HINDRANCE_TYPES[0].desc}</p></div>
+        <div class="field hidden" id="hOtherWrap"><label>Specify Other Type</label><input class="input" id="hOtherType" placeholder="e.g. Design Change"></div>
+        <div class="input-group">
+          <div class="field"><label>Delay Period From</label><input class="input" type="date" id="hFrom"></div>
+          <div class="field"><label>Delay Period To</label><input class="input" type="date" id="hTo"></div>
+        </div>
+        <p class="hint mb-2">Setting a delay period lets this hindrance be counted toward the EOT (Extension of Time) calculation once acknowledged.</p>
         <div class="field"><label>Description</label><textarea class="textarea" id="hDesc" placeholder="e.g. Cement delivery delayed, material storage location not allocated…"></textarea></div>`;
       document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="hSave">Submit</button>`;
       U.openModal("genericModal");
+      document.getElementById("hType").addEventListener("change", e=>{
+        const t = HINDRANCE_TYPES.find(x=>x.name===e.target.value);
+        document.getElementById("hTypeDesc").textContent = t?t.desc:"";
+        document.getElementById("hOtherWrap").classList.toggle("hidden", e.target.value!=="Other");
+      });
       document.getElementById("hSave").addEventListener("click", ()=>{
         const desc = document.getElementById("hDesc").value.trim();
         if(!desc){ U.toast("Describe the hindrance.", {type:"danger"}); return; }
-        DB.hindrances.create({ projectId:project.id, type:document.getElementById("hType").value, description:desc, raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
-        DB.notifications.create({ userId:project.pmId, title:"New hindrance raised", body:`${document.getElementById("hType").value} reported on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+        let type = document.getElementById("hType").value;
+        if(type==="Other"){
+          const other = document.getElementById("hOtherType").value.trim();
+          if(!other){ U.toast("Specify the \"Other\" hindrance type.", {type:"danger"}); return; }
+          type = other;
+        }
+        const delayFrom = document.getElementById("hFrom").value, delayTo = document.getElementById("hTo").value;
+        if(delayFrom && delayTo && new Date(delayTo) < new Date(delayFrom)){ U.toast("Delay 'To' date must be on/after the 'From' date.", {type:"danger"}); return; }
+        DB.hindrances.create({ projectId:project.id, type, description:desc, delayFrom:delayFrom||null, delayTo:delayTo||null, raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
+        DB.notifications.create({ userId:project.pmId, title:"New hindrance raised", body:`${type} reported on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
         U.closeModal("genericModal"); renderHindrance(); U.toast("Hindrance submitted to Project Manager.", {type:"success"});
       });
     });
-    document.getElementById("panelHindrance").addEventListener("click", e=>{
+    document.getElementById("genEOTBtn")?.addEventListener("click", ()=> printEOTLetter(eot));
+    panel.addEventListener("click", e=>{
       const ack = e.target.closest("[data-ack]"); const res = e.target.closest("[data-resolve]");
       if(ack){ DB.hindrances.update(ack.dataset.ack, {status:"acknowledged"}); renderHindrance(); }
       if(res){ DB.hindrances.update(res.dataset.resolve, {status:"resolved"}); U.toast("Hindrance marked resolved.", {type:"success"}); renderHindrance(); }
     });
+  }
+
+  function printEOTLetter(eot){
+    const pm = DB.users.get(project.pmId);
+    const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
+    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : ((DB.users.get(project.contractorId)||{}).name||"—");
+    const newEndDate = project.endDate ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
+    const periodRows = eot.merged.map(m=>`
+      <tr><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td>${U.daysBetween(m.from,m.to)+1}</td>
+      <td>${m.items.map(h=>`${U.escapeHtml(h.type)}: ${U.escapeHtml(h.description)}`).join("<br>")}</td></tr>`).join("");
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>EOT Letter — ${U.escapeHtml(project.name)}</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
+      .meta{text-align:right;font-size:12px;color:#555;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
+      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
+      <div class="title">Extension of Time (EOT) Request</div>
+      <p style="font-size:13px"><b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(new Date())}</p>
+      <p>Based on the hindrances acknowledged/resolved against this project, a total Extension of Time of <b>${eot.totalDays} day(s)</b> is computed below. Overlapping hindrance periods have been merged so no delay day is counted more than once.</p>
+      <table><thead><tr><th>Delay Period</th><th>Days</th><th>Contributing Hindrance(s)</th></tr></thead><tbody>${periodRows}</tbody></table>
+      <table><tr><td style="width:260px"><b>Original Completion Date</b></td><td>${U.fmtDate(project.endDate)}</td></tr>
+      <tr><td><b>Total EOT Days</b></td><td>${eot.totalDays}</td></tr>
+      <tr><td><b>Revised Completion Date (proposed)</b></td><td>${newEndDate?U.fmtDate(newEndDate):"—"}</td></tr></table>
+      <div class="signoff"><div>${U.escapeHtml(contractorName)}<br>Contractor</div><div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>EOT computed from ${eot.merged.reduce((s,m)=>s+m.items.length,0)} hindrance record(s)</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
   }
 
   /* ================= PAYMENT REQUESTS ================= */
@@ -1233,7 +1368,8 @@
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",
     "DPR: log daily labour, equipment, weather and work done — useful for dispute resolution and progress tracking.",
-    "Hindrance: contractors report blockers (material delay, drawings, permits, etc.); Project Managers acknowledge and resolve them.",
+    "Hindrance: report blockers with a predefined type (or \"Other\" to specify your own) plus a description and an optional delay period. Once a Project Manager acknowledges or resolves a hindrance with dates set, it counts toward the EOT (Extension of Time) calculator, which merges overlapping delay periods so no day is double-counted, then generates a professional EOT letter proposing a revised completion date.",
+    "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Payment Requests: a lightweight way to formally request release of funds against measured or billed work."
   ]);
 })();

@@ -9,6 +9,10 @@
   const params = new URLSearchParams(location.search);
   const wo = DB.workOrders.get(params.get("id"));
   if(!wo){ document.querySelector(".app-content").innerHTML = `<div class="empty-state">Work Order not found.</div>`; return; }
+  if((isPM && wo.pmId!==user.id) || (!isPM && wo.contractorId!==user.id)){
+    document.querySelector(".app-content").innerHTML = `<div class="empty-state"><div class="es-icon">🔒</div>This Work Order isn't available to your account.</div>`;
+    return;
+  }
   const tender = DB.tenders.get(wo.tenderId);
   const pm = DB.users.get(wo.pmId);
   const contractor = DB.users.get(wo.contractorId);
