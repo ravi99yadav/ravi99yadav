@@ -78,7 +78,6 @@
       <input placeholder="Search tenders, projects, contractors… (Ctrl+K)" data-open-palette readonly>
     </div>
     <button class="btn btn-primary btn-sm no-print" id="quickCreateBtn">${ICONS.plus} Quick Create</button>
-    <div class="navbar-clock" id="navClock"></div>
     <div style="position:relative">
       <button class="icon-btn" id="notifBtn">${ICONS.bell}${notifCount?'<span class="dot"></span>':''}</button>
       <div class="dropdown-panel" id="notifPanel"></div>
@@ -275,7 +274,6 @@
     if(sidebarMount){ const aside=document.createElement("aside"); aside.className="sidebar no-print"; aside.innerHTML = buildSidebar(user.role, opts.active); sidebarMount.replaceWith(aside); }
     if(navbarMount){ const nav=document.createElement("header"); nav.className="navbar no-print"; nav.innerHTML = buildNavbar(user); navbarMount.replaceWith(nav); }
 
-    U().startClock(document.getElementById("navClock"));
     U().initTheme();
     U().bindModalDismiss();
     U().bindRipple();

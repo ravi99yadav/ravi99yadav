@@ -778,7 +778,14 @@
         }
       }
       if(e.target.classList.contains("boq-item-select")){
-        DB.mbRows.update(tr.dataset.row, { boqItemId: e.target.value });
+        const selectedItem = boqOptions.find(it=>it.id===e.target.value);
+        const patch = { boqItemId: e.target.value };
+        if(selectedItem) patch.unit = selectedItem.unit;
+        DB.mbRows.update(tr.dataset.row, patch);
+        if(selectedItem){
+          const unitInput = tr.querySelector('[data-field="unit"]');
+          if(unitInput) unitInput.value = selectedItem.unit;
+        }
         renderAbstract(sheetId);
       }
     });
