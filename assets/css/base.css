@@ -60,8 +60,11 @@ button{cursor:pointer;}
 
 /* Print helpers used across print-ready pages */
 @media print{
+  @page{ margin:10mm; }
   .no-print{display:none !important;}
   body{background:#fff !important;}
+  .app-main{margin-left:0 !important;}
+  .app-content{padding:0 !important;max-width:none !important;}
   .print-area{box-shadow:none !important;border:none !important;}
 }
 .print-portrait .print-page{width:210mm;min-height:297mm;}

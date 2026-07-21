@@ -1100,22 +1100,7 @@
         <td>${prevCum.toFixed(2)}</td><td>${bi.thisBillQty.toFixed(2)}</td><td>${bi.cumulativeQty.toFixed(2)}</td><td>${U.fmtINR(bi.amount)}</td>
       </tr>`;
     }).join("") : "";
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${b.billNo}</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
-      .meta{text-align:right;font-size:12px;color:#555;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
-      th{background:#f3f4f6;}
-      .summary td:first-child{width:260px;}
-      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
-      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-      @media print{ .no-print{display:none;} }
-    </style></head><body>
+    const body = `
       <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
       <div class="title">Running Account (RA) Bill</div>
       <p style="font-size:13px"><b>Bill No:</b> ${b.billNo} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(b.billDate)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Status:</b> ${b.status}</p>
@@ -1126,7 +1111,7 @@
 
       <h4>Bill Summary</h4>
       <table class="summary">
-      <tr><td>Previous Bill Amount</td><td>${U.fmtINR(b.previousBillAmount)}</td></tr>
+      <tr><td style="width:260px">Previous Bill Amount</td><td>${U.fmtINR(b.previousBillAmount)}</td></tr>
       <tr><td>Current Gross Claimed</td><td>${U.fmtINR(b.currentGrossAmount)}</td></tr>
       <tr><td>Retention (${b.retentionPct}%)</td><td>-${U.fmtINR(retention)}</td></tr>
       <tr><td>Advance Recovery</td><td>-${U.fmtINR(b.advanceRecovery)}</td></tr>
@@ -1139,9 +1124,8 @@
         <div>${U.escapeHtml(contractorName)}<br>Contractor</div>
         <div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div>
       </div>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>Bill Status: ${b.status}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Bill Status: ${b.status}</span></div>`;
+    SW.UI.printDocument(b.billNo, body);
   }
 
   /* ================= PURCHASE ORDERS ================= */
@@ -1321,20 +1305,7 @@
     const pmUser = DB.users.get(project.pmId);
     const pmCompany = pmUser ? (DB.companies.list(c=>c.ownerId===pmUser.id)[0]||{}) : {};
     const rows = (po.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${U.escapeHtml(i.unit)}</td><td>${i.qty}</td><td>${U.fmtINR(i.rate)}</td><td>${U.fmtINR(i.qty*i.rate)}</td></tr>`).join("");
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${U.escapeHtml(po.poNo)} — Purchase Order</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
-      .meta{text-align:right;font-size:12px;color:#555;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
-      th{background:#f3f4f6;}
-      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
-      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    </style></head><body>
+    const body = `
       <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
       <div class="title">Purchase Order</div>
       <p style="font-size:13px"><b>PO No:</b> ${U.escapeHtml(po.poNo)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(po.createdAt)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
@@ -1344,9 +1315,8 @@
       <tfoot><tr><td colspan="4" style="text-align:right"><b>Total</b></td><td><b>${U.fmtINR(poTotal(po))}</b></td></tr></tfoot></table>
       ${po.paymentTerms?`<p style="font-size:13px"><b>Payment Terms:</b> ${U.escapeHtml(po.paymentTerms)}</p>`:""}
       <div class="signoff"><div>Vendor Acknowledgement</div><div>${pmUser?U.escapeHtml(pmUser.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>Status: ${po.status}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Status: ${po.status}</span></div>`;
+    SW.UI.printDocument(`${U.escapeHtml(po.poNo)} — Purchase Order`, body);
   }
 
   function printPI(po){
@@ -1355,16 +1325,7 @@
     const tax = subtotal * ((po.piTaxPct||0)/100);
     const grand = subtotal + tax;
     const advance = grand * ((po.piAdvancePct||0)/100);
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${U.escapeHtml(po.piNumber)} — Proforma Invoice</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
-      th{background:#f3f4f6;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    </style></head><body>
+    const body = `
       <div class="brand">${U.escapeHtml(po.vendorName)}</div>
       <div class="title">Proforma Invoice</div>
       <p style="font-size:13px"><b>PI No:</b> ${U.escapeHtml(po.piNumber)} &nbsp;|&nbsp; <b>Date:</b> ${po.piDate?U.fmtDate(po.piDate):"—"} &nbsp;|&nbsp; <b>Valid Till:</b> ${po.piValidTill?U.fmtDate(po.piValidTill):"—"}</p>
@@ -1376,9 +1337,8 @@
         <tr><td colspan="4" style="text-align:right"><b>Grand Total</b></td><td><b>${U.fmtINR(grand)}</b></td></tr>
         ${po.piAdvancePct?`<tr><td colspan="4" style="text-align:right">Advance Required (${po.piAdvancePct}%)</td><td>${U.fmtINR(advance)}</td></tr>`:""}
       </tfoot></table>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>Reference: ${U.escapeHtml(po.poNo)}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Reference: ${U.escapeHtml(po.poNo)}</span></div>`;
+    SW.UI.printDocument(`${U.escapeHtml(po.piNumber)} — Proforma Invoice`, body);
   }
 
   /* ================= VEHICLE LOG ================= */
@@ -1489,16 +1449,7 @@
 
   function printVehiclePass(v){
     const checksHtml = VEHICLE_CHECKS.map(c=>`<tr><td>${U.escapeHtml(c.label)}</td><td>${(v.checks||{})[c.key] ? "✅ Passed" : "❌ Failed"}</td></tr>`).join("");
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>Gate Pass — ${U.escapeHtml(v.vehicleNo)}</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
-      th{background:#f3f4f6;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    </style></head><body>
+    const body = `
       <div class="brand">SubletWorks.com</div>
       <div class="title">Vehicle Gate Pass</div>
       <p style="font-size:13px"><b>Vehicle No:</b> ${U.escapeHtml(v.vehicleNo)} &nbsp;|&nbsp; <b>Purpose:</b> ${U.escapeHtml(v.purpose)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
@@ -1506,9 +1457,8 @@
       <p style="font-size:13px"><b>Entry Time:</b> ${U.fmtDateTime(v.entryTime)} &nbsp;|&nbsp; <b>Exit Time:</b> ${v.exitTime?U.fmtDateTime(v.exitTime):"— (still on site)"}</p>
       <table><thead><tr><th>Safety Check</th><th>Result</th></tr></thead><tbody>${checksHtml}</tbody></table>
       ${v.notes?`<p style="font-size:13px"><b>Notes:</b> ${U.escapeHtml(v.notes)}</p>`:""}
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>Overall: ${vehicleLogStatus(v)==='flagged' ? '⚠ Flagged' : 'Cleared'}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Overall: ${vehicleLogStatus(v)==='flagged' ? '⚠ Flagged' : 'Cleared'}</span></div>`;
+    SW.UI.printDocument(`Gate Pass — ${U.escapeHtml(v.vehicleNo)}`, body);
   }
 
   /* ================= MATERIAL INWARD (GRN) ================= */
@@ -1591,25 +1541,15 @@
 
   function printGRN(g, po){
     const rows = (g.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${U.escapeHtml(i.unit)}</td><td>${i.orderedQty}</td><td>${i.receivedQty}</td><td>${i.damagedQty>0?i.damagedQty:"—"}</td></tr>`).join("");
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${U.escapeHtml(g.grnNo)} — Goods Received Note</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
-      th{background:#f3f4f6;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    </style></head><body>
+    const body = `
       <div class="brand">SubletWorks.com</div>
       <div class="title">Goods Received Note</div>
       <p style="font-size:13px"><b>GRN No:</b> ${U.escapeHtml(g.grnNo)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(g.createdAt)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
       ${po?`<p style="font-size:13px"><b>Against PO:</b> ${U.escapeHtml(po.poNo)} &nbsp;|&nbsp; <b>Vendor:</b> ${U.escapeHtml(po.vendorName)}</p>`:""}
       <table><thead><tr><th>Description</th><th>Unit</th><th>Ordered</th><th>Received</th><th>Damaged/Short</th></tr></thead><tbody>${rows}</tbody></table>
       ${g.notes?`<p style="font-size:13px"><b>Notes:</b> ${U.escapeHtml(g.notes)}</p>`:""}
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>${grnHasVariance(g)?'⚠ Variance from PO':'Matches PO'}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${grnHasVariance(g)?'⚠ Variance from PO':'Matches PO'}</span></div>`;
+    SW.UI.printDocument(`${U.escapeHtml(g.grnNo)} — Goods Received Note`, body);
   }
 
   /* ================= RECONCILIATION ================= */
@@ -1942,22 +1882,12 @@
   }
 
   function printRegisterWindow(title, headerHtml, tableHtml){
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${title} — ${U.escapeHtml(project.name)}</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111;}
-      h1{font-size:18px;margin:0 0 4px}
-      .meta{font-size:12px;color:#555;margin-bottom:16px}
-      table{width:100%;border-collapse:collapse;font-size:11px;}
-      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top;}
-      th{background:#f3f4f6;}
-      .footer{margin-top:16px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-    </style></head><body>
-      <h1>${title}</h1>
-      <div class="meta">${headerHtml}</div>
+    const body = `
+      <div class="title" style="text-align:left;text-transform:none;letter-spacing:normal;font-size:18px;margin:0 0 4px">${title}</div>
+      <p class="meta" style="font-size:12px;color:#555;margin-bottom:16px">${headerHtml}</p>
       ${tableHtml}
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>`;
+    SW.UI.printDocument(`${title} — ${U.escapeHtml(project.name)}`, body);
   }
   function printHindranceRegister(list){
     const rows = list.map(h=>`<tr><td>${U.escapeHtml(h.category||"—")}</td><td>${U.escapeHtml(h.type)}</td><td>${h.status}</td><td>${h.criticalPathImpact?"Yes":"No"}</td>
@@ -1984,25 +1914,11 @@
       <tr><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td>${U.daysBetween(m.from,m.to)+1}</td>
       <td>${m.items.map(h=>`<b>[${U.escapeHtml(h.category||"—")}] ${U.escapeHtml(h.type)}:</b> ${U.escapeHtml(h.description)}`).join("<br><br>")}</td></tr>`).join("");
     const criticalCount = (r.mergedRanges||[]).reduce((s,m)=>s+m.items.filter(h=>h.criticalPathImpact).length,0);
-    const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>${U.escapeHtml(r.requestNo)} — EOT Letter — ${U.escapeHtml(project.name)}</title><style>
-      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
-      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
-      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
-      .meta{text-align:right;font-size:12px;color:#555;}
-      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
-      h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#5B5CEB;margin:18px 0 6px;}
-      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;vertical-align:top;}
-      th{background:#f3f4f6;}
-      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
-      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
-      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
-      .badge-inline{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff;background:${r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':r.status==='returned'?'#0284c7':'#d97706'}}
-    </style></head><body>
+    const statusColor = r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':r.status==='returned'?'#0284c7':'#d97706';
+    const body = `
       <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
       <div class="title">Extension of Time (EOT) Request</div>
-      <p style="font-size:13px"><b>Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(r.createdAt)} &nbsp;|&nbsp; <b>Status:</b> <span class="badge-inline">${r.status}</span> &nbsp;|&nbsp; <b>Rev:</b> ${r.version||1}</p>
+      <p style="font-size:13px"><b>Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(r.createdAt)} &nbsp;|&nbsp; <b>Status:</b> <span class="badge-inline" style="background:${statusColor}">${r.status}</span> &nbsp;|&nbsp; <b>Rev:</b> ${r.version||1}</p>
       <h4>Background</h4>
       <p>This request is submitted in accordance with the contract, seeking an Extension of Time on account of the delay event(s) described below, none of which are attributable to the Contractor's default. A total Extension of Time of <b>${r.totalDays} day(s)</b> is claimed, computed after merging overlapping delay periods so that no calendar day is counted more than once.</p>
       <h4>Chronology of Delay Events</h4>
@@ -2017,9 +1933,8 @@
       <h4>Declaration</h4>
       <p style="font-size:12px">The Contractor declares that the above delay events and periods are true and correct to the best of its knowledge, and supporting evidence is available on request.</p>
       <div class="signoff"><div>${U.escapeHtml(contractorName)}<br>Contractor</div><div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1}</span></div>
-      <script>window.print()<\/script></body></html>`);
-    w.document.close();
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1}</span></div>`;
+    SW.UI.printDocument(`${U.escapeHtml(r.requestNo)} — EOT Letter — ${U.escapeHtml(project.name)}`, body);
   }
 
   /* ================= PAYMENT REQUESTS ================= */

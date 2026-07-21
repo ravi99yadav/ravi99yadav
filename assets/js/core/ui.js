@@ -272,7 +272,7 @@
     if(!shell){ shell = document.createElement("div"); shell.className="app-shell"; document.body.appendChild(shell); }
     const sidebarMount = document.getElementById("sidebarMount");
     const navbarMount = document.getElementById("navbarMount");
-    if(sidebarMount){ const aside=document.createElement("aside"); aside.className="sidebar"; aside.innerHTML = buildSidebar(user.role, opts.active); sidebarMount.replaceWith(aside); }
+    if(sidebarMount){ const aside=document.createElement("aside"); aside.className="sidebar no-print"; aside.innerHTML = buildSidebar(user.role, opts.active); sidebarMount.replaceWith(aside); }
     if(navbarMount){ const nav=document.createElement("header"); nav.className="navbar no-print"; nav.innerHTML = buildNavbar(user); navbarMount.replaceWith(nav); }
 
     U().startClock(document.getElementById("navClock"));
@@ -352,7 +352,7 @@
       ${opts.entity && opts.entityId ? `<button class="btn btn-sm btn-ghost" id="${id}_audit">🕒 History</button>` : ""}
     `;
     const auditPanel = document.createElement("div");
-    auditPanel.className = "cb-audit hidden";
+    auditPanel.className = "cb-audit hidden no-print";
     auditPanel.id = id + "_auditPanel";
     (container||document.querySelector(".app-content")).prepend(auditPanel);
     (container||document.querySelector(".app-content")).prepend(bar);
@@ -373,6 +373,38 @@
     return bar;
   }
 
+  function printDocument(title, bodyHtml, opts){
+    opts = opts || {};
+    const size = opts.landscape ? "A4 landscape" : "A4";
+    const w = window.open("", "_blank");
+    if(!w){ (global.SW.Utils||{}).toast?.("Pop-up blocked — please allow pop-ups to print this document.", {type:"danger"}); return null; }
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${title}</title><style>
+      @page{ size:${size}; margin:14mm; }
+      *{ box-sizing:border-box; }
+      body{ font-family:Arial,Helvetica,sans-serif; padding:24px; color:#111; }
+      .letterhead{ display:flex; justify-content:space-between; align-items:center; border-bottom:3px solid #5B5CEB; padding-bottom:12px; margin-bottom:16px; }
+      .brand{ font-weight:800; font-size:20px; color:#5B5CEB; }
+      .meta{ text-align:right; font-size:12px; color:#555; }
+      .title{ text-align:center; font-size:18px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; margin:14px 0 20px; }
+      h4{ font-size:13px; text-transform:uppercase; letter-spacing:.04em; color:#5B5CEB; margin:18px 0 6px; }
+      table{ width:100%; border-collapse:collapse; font-size:13px; margin-bottom:16px; page-break-inside:auto; }
+      thead{ display:table-header-group; }
+      tr{ page-break-inside:avoid; page-break-after:auto; }
+      th,td{ border:1px solid #ccc; padding:6px 10px; text-align:left; vertical-align:top; }
+      th{ background:#f3f4f6; }
+      .signoff{ display:flex; justify-content:space-between; margin-top:60px; font-size:13px; page-break-inside:avoid; }
+      .signoff div{ text-align:center; width:220px; border-top:1px solid #111; padding-top:6px; }
+      .footer{ margin-top:24px; font-size:10px; color:#888; display:flex; justify-content:space-between; border-top:1px solid #eee; padding-top:8px; }
+      .badge-inline{ display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:700; color:#fff; }
+    </style></head><body>${bodyHtml}</body></html>`);
+    w.document.close();
+    w.focus();
+    // A short delay (rather than calling print() synchronously) gives the browser
+    // time to finish layout before the print dialog opens, avoiding a blank preview.
+    setTimeout(() => { try{ w.print(); }catch(e){} }, 250);
+    return w;
+  }
+
   global.SW = global.SW || {};
-  global.SW.UI = { mountShell, helpSection, render403, contextBar, ICONS, roleLabel };
+  global.SW.UI = { mountShell, helpSection, render403, contextBar, printDocument, ICONS, roleLabel };
 })(window);
