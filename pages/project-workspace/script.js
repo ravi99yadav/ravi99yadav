@@ -41,7 +41,7 @@
   SW.UI.contextBar(document.querySelector(".app-content"), {
     entity:"projects", entityId:project.id,
     status: project.status, statusLabel: (project.status||"").charAt(0).toUpperCase()+(project.status||"").slice(1),
-    permission: SW.UI.roleLabel(user.role) + (isPM ? " · Owner" : " · Contractor"),
+    permission: isPM ? "Project Manager · Owner" : "Contractor",
     version: project.version, updatedAt: project.updatedAt
   });
   const otherUser = isPM ? DB.users.get(project.contractorId) : DB.users.get(project.pmId);
@@ -1412,10 +1412,10 @@
   function openEotRequestModal(qualifying, existingReq){
     document.getElementById("genericModalTitle").textContent = existingReq ? "Revise EOT Request" : "New EOT Request";
     document.getElementById("genericModalBody").innerHTML = `
-      <p class="hint mb-2">Select the delay events (hindrances) this EOT Request covers. Overlapping delay periods are merged automatically so no day is double-counted.</p>
+      <p class="hint mb-2">All outstanding delay events are pre-selected — uncheck any that shouldn't count toward this request. Overlapping periods are merged automatically so no day is double-counted.</p>
       <div class="table-wrap" style="max-height:260px;overflow-y:auto"><table class="dtable"><thead><tr><th></th><th>Type</th><th>Category</th><th>Period</th><th>Days</th><th>Critical</th></tr></thead>
       <tbody>${qualifying.map(h=>`<tr>
-        <td><input type="checkbox" class="eotHindChk" value="${h.id}" ${existingReq && (existingReq.hindranceIds||[]).includes(h.id) ? "checked":""}></td>
+        <td><input type="checkbox" class="eotHindChk" value="${h.id}" ${existingReq ? ((existingReq.hindranceIds||[]).includes(h.id)?"checked":"") : "checked"}></td>
         <td>${U.escapeHtml(h.type)}</td><td>${U.escapeHtml(h.category||"—")}</td>
         <td>${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)}</td><td>${U.daysBetween(h.delayFrom,h.delayTo)+1}</td>
         <td>${h.criticalPathImpact?"Yes":"No"}</td>

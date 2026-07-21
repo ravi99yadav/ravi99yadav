@@ -338,33 +338,24 @@
   };
 
   function contextBar(container, opts){
+    // Kept deliberately compact: the floating clock (mountFloatingClock) already
+    // covers date/time everywhere, so this only adds what that widget doesn't.
     opts = opts || {};
     const u = U();
     const id = "cb_" + Math.random().toString(36).slice(2,8);
     const bar = document.createElement("div");
     bar.className = "context-bar no-print";
     bar.innerHTML = `
-      <span class="cb-item cb-clock" id="${id}_clock"></span>
       ${opts.status ? `<span class="badge ${CB_STATUS_CLASS[String(opts.status).toLowerCase()]||'badge-neutral'}">${u.escapeHtml(opts.statusLabel||opts.status)}</span>` : ""}
       ${opts.permission ? `<span class="badge badge-neutral">🔑 ${u.escapeHtml(opts.permission)}</span>` : ""}
-      ${opts.version ? `<span class="cb-item">v${u.escapeHtml(String(opts.version))}</span>` : ""}
-      ${opts.updatedAt ? `<span class="cb-item">Updated ${u.relativeTime(opts.updatedAt)}</span>` : ""}
-      ${opts.entity && opts.entityId ? `<button class="btn btn-sm btn-ghost" id="${id}_audit">🕒 Audit Trail</button>` : ""}
+      ${(opts.version || opts.updatedAt) ? `<span class="cb-item">${opts.version?`v${u.escapeHtml(String(opts.version))}`:""}${opts.version && opts.updatedAt?" · ":""}${opts.updatedAt?`Updated ${u.relativeTime(opts.updatedAt)}`:""}</span>` : ""}
+      ${opts.entity && opts.entityId ? `<button class="btn btn-sm btn-ghost" id="${id}_audit">🕒 History</button>` : ""}
     `;
     const auditPanel = document.createElement("div");
     auditPanel.className = "cb-audit hidden";
     auditPanel.id = id + "_auditPanel";
     (container||document.querySelector(".app-content")).prepend(auditPanel);
     (container||document.querySelector(".app-content")).prepend(bar);
-
-    function tick(){
-      const now = new Date();
-      const el = document.getElementById(id+"_clock");
-      if(!el){ clearInterval(timer); return; }
-      el.textContent = "📅 " + now.toLocaleDateString(undefined,{weekday:"short",day:"2-digit",month:"short",year:"numeric"}) + " · " + now.toLocaleTimeString();
-    }
-    tick();
-    const timer = setInterval(tick, 1000);
 
     if(opts.entity && opts.entityId){
       document.getElementById(id+"_audit").addEventListener("click", ()=>{
