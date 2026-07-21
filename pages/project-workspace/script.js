@@ -727,16 +727,16 @@
     const rows = DB.mbRows.list(r=>r.mbSheetId===sheetId);
     const boqOptions = projectBoqItems();
     document.getElementById("mbContent").innerHTML = `
-      <p class="hint mb-2">💡 Every row measures against a specific BOQ item (official or an approved Extra Item) — pick it from the dropdown. Multiple rows against the same item sum together automatically in the Abstract below. Use a Factor preset for Steel/TMT (by bar diameter)/Pipe/Plate to auto-fill the predefined weight and switch the row to kg — the abstract converts kg → MT automatically when the BOQ item is billed in MT/Tons. You can also paste a copied Excel range (Unit, Nos, Length, Breadth, Height, Factor columns) directly into any cell — extra rows are added automatically.</p>
+      <p class="hint mb-2">💡 Every row measures against a specific BOQ item (official or an approved Extra Item) — pick it from the dropdown, and optionally label it as a sub-item/location (e.g. "Grid A1-A6", "2nd Floor Slab"). Multiple sub-item rows against the same BOQ item sum together automatically into that item's total in the Abstract below. Use a Factor preset for Steel/TMT (by bar diameter)/Pipe/Plate to auto-fill the predefined weight and switch the row to kg — the abstract converts kg → MT automatically when the BOQ item is billed in MT/Tons. You can also paste a copied Excel range (Sub Item, Unit, Nos, Length, Breadth, Height, Factor columns) directly into any cell — extra rows are added automatically.</p>
       ${!boqOptions.length ? `<div class="empty-state mb-3">This project has no BOQ items yet (lump sum contract) — add an Extra Item first, or measure isn't applicable here.</div>` : ""}
-      <div class="table-wrap mb-4"><table class="dtable"><thead><tr><th>BOQ Item</th><th>Row Unit</th><th>Nos</th><th>Length (m)</th><th>Breadth (m)</th><th>Height/Depth (m)</th><th>Factor</th><th>Qty</th><th></th></tr></thead>
+      <div class="table-wrap mb-4"><table class="dtable"><thead><tr><th>BOQ Item</th><th>Sub Item / Location</th><th>Row Unit</th><th>Nos</th><th>Length (m)</th><th>Breadth (m)</th><th>Height/Depth (m)</th><th>Factor</th><th>Qty</th><th></th></tr></thead>
       <tbody id="mbTbody">${rows.map(r=>mbRowHtml(r, boqOptions)).join("")}</tbody></table></div>
       <button class="btn btn-outline btn-sm mb-4" id="addMBRowBtn" ${!boqOptions.length?'disabled':''}>+ Add Measurement Row</button>
       <div class="card"><h3>Auto Abstract (in each BOQ item's own unit)</h3><div id="mbAbstract"></div></div>`;
     renderAbstract(sheetId);
     document.getElementById("addMBRowBtn").addEventListener("click", ()=>{
       const first = boqOptions[0];
-      DB.mbRows.create({mbSheetId:sheetId, boqItemId:first?first.id:null, unit:first?first.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
+      DB.mbRows.create({mbSheetId:sheetId, boqItemId:first?first.id:null, subItem:"", unit:first?first.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
       renderMBContent(sheetId);
     });
     const tbody = document.getElementById("mbTbody");
@@ -787,7 +787,7 @@
       if(!text.includes("\t") && !text.includes("\n")) return;
       e.preventDefault();
       const grid = U.parsePastedTable(text);
-      const fields = ["unit","nos","length","breadth","height","factor"];
+      const fields = ["subItem","unit","nos","length","breadth","height","factor"];
       const startFieldIdx = fields.indexOf(input.dataset.field);
       const trs = U.qsa("tr", tbody);
       const startRowIdx = trs.indexOf(input.closest("tr"));
@@ -797,7 +797,7 @@
         const rIdx = startRowIdx + rOff;
         let row = dbRows[rIdx];
         if(!row){
-          row = DB.mbRows.create({mbSheetId:sheetId, boqItemId:defaultItem?defaultItem.id:null, unit:defaultItem?defaultItem.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
+          row = DB.mbRows.create({mbSheetId:sheetId, boqItemId:defaultItem?defaultItem.id:null, subItem:"", unit:defaultItem?defaultItem.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
           dbRows.push(row);
         }
         const updated = Object.assign({}, row);
@@ -817,6 +817,7 @@
   function mbRowHtml(r, boqOptions){
     return `<tr data-row="${r.id}">
       <td><select class="select boq-item-select" style="min-width:200px">${boqOptions.map(it=>`<option value="${it.id}" ${r.boqItemId===it.id?'selected':''}>${U.escapeHtml(it.description)} (${it.unit})</option>`).join("")}</select></td>
+      <td><input class="input" data-field="subItem" value="${SW.Utils.escapeHtml(r.subItem||"")}" style="min-width:140px" placeholder="e.g. Grid A1-A6"></td>
       <td><input class="input" data-field="unit" value="${SW.Utils.escapeHtml(r.unit||"")}" style="width:70px" title="Unit this row's Qty is measured in (auto-set by Factor preset for weight items)"></td>
       <td><input class="input" type="number" data-field="nos" value="${r.nos}" style="width:70px"></td>
       <td><input class="input" type="number" step="0.01" data-field="length" value="${r.length}" style="width:80px"></td>
@@ -839,11 +840,26 @@
       const key = r.boqItemId || "__unlinked";
       const desc = boqItem ? boqItem.description : "(no BOQ item selected)";
       const boqUnit = boqItem ? boqItem.unit : r.unit;
-      groups[key] = groups[key] || { desc, unit:boqUnit, qty:0 };
-      groups[key].qty += convertQtyToBoqUnit(r.qty||0, r.unit, boqUnit);
+      groups[key] = groups[key] || { desc, unit:boqUnit, qty:0, subItems:[] };
+      const convertedQty = convertQtyToBoqUnit(r.qty||0, r.unit, boqUnit);
+      groups[key].qty += convertedQty;
+      groups[key].subItems.push({ label: r.subItem||"(unlabeled)", qty: convertedQty, rawQty: r.qty||0, rawUnit: r.unit });
     });
     const list = Object.values(groups);
-    document.getElementById("mbAbstract").innerHTML = list.length ? `<table class="dtable"><thead><tr><th>Item</th><th>Unit</th><th>Total Qty</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.escapeHtml(g.desc)}</td><td>${g.unit}</td><td><b>${g.qty.toFixed(3)}</b></td></tr>`).join("")}</tbody></table>` : `<p class="text-muted">Add measurement rows above to see the abstract.</p>`;
+    document.getElementById("mbAbstract").innerHTML = list.length ? `<table class="dtable"><thead><tr><th>Item</th><th>Unit</th><th>Total Qty</th><th># Sub-items</th></tr></thead><tbody>${list.map((g,gi)=>`
+      <tr class="mb-abstract-row" data-abstract-toggle="${gi}" style="cursor:pointer">
+        <td>${U.escapeHtml(g.desc)} <span style="font-size:11px;color:var(--text-muted)">▾ details</span></td><td>${g.unit}</td><td><b>${g.qty.toFixed(3)}</b></td><td>${g.subItems.length}</td>
+      </tr>
+      <tr class="mb-abstract-detail hidden" data-abstract-detail="${gi}"><td colspan="4">
+        <table class="dtable" style="margin:0"><thead><tr><th>Sub Item / Location</th><th>Measured</th><th>Contributes (in ${U.escapeHtml(g.unit)})</th></tr></thead>
+        <tbody>${g.subItems.map(s=>`<tr><td>${U.escapeHtml(s.label)}</td><td>${s.rawQty.toFixed(3)} ${U.escapeHtml(s.rawUnit||"")}</td><td>${s.qty.toFixed(3)}</td></tr>`).join("")}</tbody></table>
+      </td></tr>`).join("")}</tbody></table>` : `<p class="text-muted">Add measurement rows above to see the abstract.</p>`;
+    document.getElementById("mbAbstract").querySelectorAll("[data-abstract-toggle]").forEach(tr=>{
+      tr.addEventListener("click", ()=>{
+        const detail = document.querySelector(`[data-abstract-detail="${tr.dataset.abstractToggle}"]`);
+        if(detail) detail.classList.toggle("hidden");
+      });
+    });
   }
 
   /* ================= EXTRA ITEMS ================= */

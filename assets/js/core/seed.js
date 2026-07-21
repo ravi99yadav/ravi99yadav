@@ -113,11 +113,11 @@
     const t3Boq = DB.boqItems.list(i=>i.tenderId===t3.id);
     const findItem = desc => t3Boq.find(i=>i.description===desc);
     const mbRowsData = [
-      { boqItemId:findItem("PCC bed concrete").id, unit:"Cum", nos:1, length:30, breadth:5, height:1, factor:1 },
-      { boqItemId:findItem("PCC bed concrete").id, unit:"Cum", nos:1, length:25, breadth:4, height:1, factor:1 },
-      { boqItemId:findItem("Brick masonry work").id, unit:"Sqm", nos:1, length:60, breadth:1, height:18, factor:1 },
+      { boqItemId:findItem("PCC bed concrete").id, subItem:"Grid A1-A6 (Block A)", unit:"Cum", nos:1, length:30, breadth:5, height:1, factor:1 },
+      { boqItemId:findItem("PCC bed concrete").id, subItem:"Grid B1-B6 (Block B)", unit:"Cum", nos:1, length:25, breadth:4, height:1, factor:1 },
+      { boqItemId:findItem("Brick masonry work").id, subItem:"Ground Floor Walls", unit:"Sqm", nos:1, length:60, breadth:1, height:18, factor:1 },
       // Steel measured & billed in kg here (200 bars of 16mm dia @ 12m, 1.578 kg/m) — the abstract auto-converts to MT (the BOQ item's own billing unit).
-      { boqItemId:findItem("Steel reinforcement").id, unit:"kg", nos:200, length:12, breadth:1, height:1, factor:1.578 }
+      { boqItemId:findItem("Steel reinforcement").id, subItem:"Column Reinforcement", unit:"kg", nos:200, length:12, breadth:1, height:1, factor:1.578 }
     ];
     mbRowsData.forEach(r=> DB.mbRows.create(Object.assign({ mbSheetId:mb.id }, r, { qty:r.nos*r.length*r.breadth*r.height*r.factor })));
 
