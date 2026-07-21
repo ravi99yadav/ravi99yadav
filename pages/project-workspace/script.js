@@ -541,7 +541,8 @@
         <div class="field"><label>From Date</label><input class="input" type="date" id="wpFrom" value="${plan?plan.dateFrom||'':''}"></div>
         <div class="field"><label>To Date</label><input class="input" type="date" id="wpTo" value="${plan?plan.dateTo||'':''}"></div>
       </div>
-      <div class="field"><label>Linked Gantt Task (optional)</label><select class="select" id="wpTask"><option value="">— None —</option>${tasks.map(t=>`<option value="${t.id}" ${plan&&plan.ganttTaskId===t.id?'selected':''}>${U.escapeHtml(t.name)}</option>`).join("")}</select></div>
+      <div class="field"><label>Linked Gantt Task</label><select class="select" id="wpTask"><option value="">— None (auto-create from this plan's dates) —</option>${tasks.map(t=>`<option value="${t.id}" ${plan&&plan.ganttTaskId===t.id?'selected':''}>${U.escapeHtml(t.name)}</option>`).join("")}</select>
+      <p class="hint mt-1">Pick an existing Gantt task, or leave as "None" and a timeline entry will be created automatically from this plan's From/To dates.</p></div>
 
       <div class="card mb-4" style="background:var(--surface-2)">
         <label class="mb-1" style="font-weight:600;font-size:13px">Quick-fill from a Common Work Item</label>
@@ -636,8 +637,19 @@
       const dateFrom = document.getElementById("wpFrom").value;
       const dateTo = document.getElementById("wpTo").value;
       if(!dateFrom || !dateTo){ U.toast("Set both from and to dates.", {type:"danger"}); return; }
+      let ganttTaskId = document.getElementById("wpTask").value||null;
+      let createdTimeline = false;
+      if(!ganttTaskId){
+        // No existing Gantt task picked — this Work Plan decides its own slice of the
+        // project timeline, so create one automatically instead of leaving the plan
+        // disconnected from the schedule.
+        const taskName = document.getElementById("wpRemarks").value.trim() || document.getElementById("wpEquipment").value.trim() || `Work Plan (${U.fmtDate(dateFrom)} – ${U.fmtDate(dateTo)})`;
+        const newTask = DB.ganttTasks.create({ projectId:project.id, name:taskName, start:dateFrom, end:dateTo, type:"task", progress:0, critical:false, dependsOn:[], baselineStart:dateFrom, baselineEnd:dateTo });
+        ganttTaskId = newTask.id;
+        createdTimeline = true;
+      }
       const data = {
-        projectId:project.id, dateFrom, dateTo, ganttTaskId: document.getElementById("wpTask").value||null,
+        projectId:project.id, dateFrom, dateTo, ganttTaskId,
         labour: labourRows.filter(r=>r.trade && r.trade.trim()).map(r=>({trade:r.trade.trim(), count:+r.count||0})),
         material: materialRows.filter(r=>r.item && r.item.trim()).map(r=>({item:r.item.trim(), qty:+r.qty||0, unit:(r.unit||"").trim()||"Nos"})),
         equipment: document.getElementById("wpEquipment").value.trim(),
@@ -647,8 +659,9 @@
       else DB.workPlans.create(Object.assign({status:"planned", createdBy:user.id}, data));
       const otherId = isPM ? project.contractorId : project.pmId;
       if(otherId) DB.notifications.create({ userId:otherId, title: plan?"Work plan updated":"New work plan added", body:`${U.fmtDate(dateFrom)} – ${U.fmtDate(dateTo)} on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=workplan" });
-      U.closeModal("genericModal"); renderWorkPlan();
-      U.toast(plan?"Work plan updated.":"Work plan created.", {type:"success"});
+      if(createdTimeline) recalcProjectProgress();
+      U.closeModal("genericModal"); renderWorkPlan(); renderGantt(); renderOverview();
+      U.toast(plan?"Work plan updated.":(createdTimeline ? "Work plan created — a Gantt timeline entry was added automatically." : "Work plan created."), {type:"success"});
     });
   }
 
@@ -1988,7 +2001,7 @@
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
-    "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range, optionally linked to a Gantt task. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables, or use \"Quick-fill from a Common Work Item\" to auto-calculate standard material and mandays for common items (Brickwork, PCC, RCC, Plastering, Flooring, Painting, Steel fixing) from a quantity.",
+    "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range. Link it to an existing Gantt task, or leave it unlinked and a Gantt timeline entry is created automatically from the plan's From/To dates — so raising a Work Plan is what actually decides and builds out the project's schedule. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables, or use \"Quick-fill from a Common Work Item\" to auto-calculate standard material and mandays for common items (Brickwork, PCC, RCC, Plastering, Flooring, Painting, Steel fixing) from a quantity.",
     "MB Sheet: every row is measured against a specific BOQ item (official or an approved Extra Item) picked from a dropdown — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate that also switch the row to a weight unit (kg). The abstract sums every row per BOQ item automatically and converts kg → MT when that item is billed in MT/Tons.",
     "RA Bill: for item-wise BOQs, claim against each item using % complete or a manual cumulative quantity — this-bill qty/amount is auto-computed from the last billed cumulative. Retention, advance recovery, GST and TDS are then calculated automatically. Project Managers approve or reject.",
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
