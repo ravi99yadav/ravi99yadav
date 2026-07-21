@@ -1144,6 +1144,243 @@
     w.document.close();
   }
 
+  /* ================= PURCHASE ORDERS ================= */
+  function poStatusBadge(status){
+    const map = { draft:"badge-neutral", sent:"badge-warning", pi_received:"badge-info", confirmed:"badge-accent", received:"badge-success" };
+    const label = { draft:"Draft", sent:"Sent to Vendor", pi_received:"PI Received", confirmed:"Confirmed", received:"Goods Received" };
+    return `<span class="badge ${map[status]||'badge-neutral'}">${label[status]||status}</span>`;
+  }
+  function poTotal(po){ return (po.items||[]).reduce((s,i)=> s + (+i.qty||0)*(+i.rate||0), 0); }
+  function renderPO(){
+    const list = DB.purchaseOrders.list(p=>p.projectId===project.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const panel = document.getElementById("panelPO");
+    panel.innerHTML = `
+      <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:520px">Raise a Purchase Order to any material vendor, then record the vendor's Proforma Invoice against it before confirming and receiving goods.</p>
+        <button class="btn btn-primary btn-sm" id="newPOBtn">+ New Purchase Order</button>
+      </div>
+      ${list.length ? list.map((po,pi)=>`<div class="card mb-3 card-enter" style="animation-delay:${pi*40}ms">
+        <div class="flex justify-between items-start" style="flex-wrap:wrap;gap:10px">
+          <div><b>${U.escapeHtml(po.poNo)}</b> — ${U.escapeHtml(po.vendorName)}
+            <div class="text-muted" style="font-size:12px">${(po.items||[]).length} item(s) · ${U.fmtINR(poTotal(po))}${po.deliveryDate?` · Delivery by ${U.fmtDate(po.deliveryDate)}`:""}</div>
+          </div>
+          ${poStatusBadge(po.status)}
+        </div>
+        ${po.piNumber ? `<p class="text-muted mt-2" style="font-size:12px;margin:6px 0 0">📄 Proforma Invoice: <b>${U.escapeHtml(po.piNumber)}</b>${po.piDate?` dated ${U.fmtDate(po.piDate)}`:""}${po.piValidTill?`, valid till ${U.fmtDate(po.piValidTill)}`:""}</p>` : ""}
+        <div class="flex gap-2 mt-3" style="flex-wrap:wrap">
+          <button class="btn btn-sm btn-outline" data-print-po="${po.id}">🖨 Print PO</button>
+          ${po.status==="draft" ? `<button class="btn btn-sm btn-primary" data-po-send="${po.id}">Mark Sent to Vendor</button>` : ""}
+          ${po.status==="sent" ? `<button class="btn btn-sm btn-primary" data-po-pi="${po.id}">+ Record Proforma Invoice</button>` : ""}
+          ${po.status==="pi_received" ? `<button class="btn btn-sm btn-primary" data-po-confirm="${po.id}">Confirm Order</button>` : ""}
+          ${po.status==="confirmed" ? `<button class="btn btn-sm btn-success" data-po-receive="${po.id}">Mark Goods Received</button>` : ""}
+          ${po.piNumber ? `<button class="btn btn-sm btn-outline" data-print-pi="${po.id}">🖨 Print PI</button>` : ""}
+        </div>
+      </div>`).join("") : `<div class="empty-state"><div class="es-icon">🧾</div>No purchase orders raised yet.</div>`}`;
+
+    document.getElementById("newPOBtn").addEventListener("click", openPOModal);
+    panel.querySelectorAll("[data-print-po]").forEach(b=> b.addEventListener("click", ()=> printPO(DB.purchaseOrders.get(b.dataset.printPo))));
+    panel.querySelectorAll("[data-print-pi]").forEach(b=> b.addEventListener("click", ()=> printPI(DB.purchaseOrders.get(b.dataset.printPi))));
+    panel.querySelectorAll("[data-po-send]").forEach(b=> b.addEventListener("click", ()=>{
+      DB.purchaseOrders.update(b.dataset.poSend, { status:"sent" });
+      U.toast("Purchase Order marked as sent to vendor.", {type:"success"}); renderPO();
+    }));
+    panel.querySelectorAll("[data-po-confirm]").forEach(b=> b.addEventListener("click", ()=>{
+      DB.purchaseOrders.update(b.dataset.poConfirm, { status:"confirmed" });
+      U.toast("Order confirmed.", {type:"success"}); renderPO();
+    }));
+    panel.querySelectorAll("[data-po-receive]").forEach(b=> b.addEventListener("click", ()=>{
+      DB.purchaseOrders.update(b.dataset.poReceive, { status:"received", receivedAt:DB.nowISO() });
+      U.toast("Goods marked as received.", {type:"success"}); renderPO();
+    }));
+    panel.querySelectorAll("[data-po-pi]").forEach(b=> b.addEventListener("click", ()=> openPIModal(b.dataset.poPi)));
+  }
+
+  function openPOModal(){
+    document.getElementById("genericModalTitle").textContent = "New Purchase Order";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="input-group">
+        <div class="field"><label>Vendor Name</label><input class="input" id="poVendorName" placeholder="e.g. Ambuja Cement Dealer"></div>
+        <div class="field"><label>Vendor Contact</label><input class="input" id="poVendorContact" placeholder="Phone / email / address"></div>
+      </div>
+      <div class="field"><label>Delivery Date</label><input class="input" type="date" id="poDeliveryDate"></div>
+      <div class="field"><label>Items</label>
+        <p class="hint mb-2">💡 Tip: paste rows copied from Excel (Description, Unit, Qty, Rate) directly into the table.</p>
+        <div class="table-wrap"><table class="dtable"><thead><tr><th>Description</th><th style="width:90px">Unit</th><th style="width:90px">Qty</th><th style="width:110px">Rate (₹)</th><th style="width:110px">Amount</th><th></th></tr></thead>
+        <tbody id="poItemsTbody"></tbody></table></div>
+        <button class="btn btn-outline btn-sm mt-2" id="poAddRowBtn">+ Add Row</button>
+        <p class="mt-2"><b>Total: <span id="poTotalPreview">₹0</span></b></p>
+      </div>
+      <div class="field"><label>Payment Terms</label><textarea class="textarea" id="poPaymentTerms" placeholder="e.g. 50% advance, balance on delivery"></textarea></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="poSaveBtn">Save Purchase Order</button>`;
+    U.openModal("genericModal");
+
+    const tbody = document.getElementById("poItemsTbody");
+    function rowHtml(){ return `<tr><td contenteditable="true" data-field="desc"></td><td contenteditable="true" data-field="unit">Nos</td><td contenteditable="true" data-field="qty">0</td><td contenteditable="true" data-field="rate">0</td><td class="po-amount">₹0</td><td><button class="btn-icon" data-remove-row>✕</button></td></tr>`; }
+    function addRow(){ tbody.insertAdjacentHTML("beforeend", rowHtml()); }
+    addRow();
+    document.getElementById("poAddRowBtn").addEventListener("click", addRow);
+
+    function recalcRow(tr){
+      const qty = +tr.querySelector('[data-field="qty"]').textContent.replace(/[^\d.]/g,"")||0;
+      const rate = +tr.querySelector('[data-field="rate"]').textContent.replace(/[^\d.]/g,"")||0;
+      tr.querySelector(".po-amount").textContent = U.fmtINR(qty*rate);
+    }
+    function recalcTotal(){
+      let total = 0;
+      U.qsa("tr", tbody).forEach(tr=>{
+        const qty = +tr.querySelector('[data-field="qty"]').textContent.replace(/[^\d.]/g,"")||0;
+        const rate = +tr.querySelector('[data-field="rate"]').textContent.replace(/[^\d.]/g,"")||0;
+        total += qty*rate;
+      });
+      document.getElementById("poTotalPreview").textContent = U.fmtINR(total);
+    }
+    tbody.addEventListener("input", e=>{
+      const tr = e.target.closest("tr"); if(!tr) return;
+      recalcRow(tr); recalcTotal();
+    });
+    tbody.addEventListener("click", e=>{
+      const rm = e.target.closest("[data-remove-row]"); if(!rm) return;
+      rm.closest("tr").remove(); recalcTotal();
+    });
+    tbody.addEventListener("paste", e=>{
+      const td = e.target.closest("td[contenteditable]"); if(!td) return;
+      td.blur();
+      const text = (e.clipboardData||window.clipboardData).getData("text");
+      if(!text.includes("\n") && !text.includes("\t")) return;
+      e.preventDefault();
+      const rows = U.parsePastedTable(text);
+      const startTr = td.closest("tr");
+      const startIdx = U.qsa("tr", tbody).indexOf(startTr);
+      rows.forEach((cols, i)=>{
+        let tr = U.qsa("tr", tbody)[startIdx+i];
+        if(!tr){ addRow(); tr = U.qsa("tr", tbody)[startIdx+i]; }
+        if(cols[0]!=null) tr.querySelector('[data-field="desc"]').textContent = cols[0];
+        if(cols[1]!=null) tr.querySelector('[data-field="unit"]').textContent = cols[1];
+        if(cols[2]!=null) tr.querySelector('[data-field="qty"]').textContent = cols[2].replace(/[^\d.]/g,"");
+        if(cols[3]!=null) tr.querySelector('[data-field="rate"]').textContent = cols[3].replace(/[^\d.]/g,"");
+        recalcRow(tr);
+      });
+      recalcTotal();
+    });
+
+    document.getElementById("poSaveBtn").addEventListener("click", ()=>{
+      const vendorName = document.getElementById("poVendorName").value.trim();
+      if(!vendorName){ U.toast("Enter the vendor name.", {type:"danger"}); return; }
+      const items = U.qsa("tr", tbody).map(tr=>({
+        desc: tr.querySelector('[data-field="desc"]').textContent.trim(),
+        unit: tr.querySelector('[data-field="unit"]').textContent.trim()||"Nos",
+        qty: +tr.querySelector('[data-field="qty"]').textContent.replace(/[^\d.]/g,"")||0,
+        rate: +tr.querySelector('[data-field="rate"]').textContent.replace(/[^\d.]/g,"")||0
+      })).filter(i=>i.desc);
+      if(!items.length){ U.toast("Add at least one item.", {type:"danger"}); return; }
+      const existing = DB.purchaseOrders.list(p=>p.projectId===project.id);
+      DB.purchaseOrders.create({
+        projectId:project.id, poNo:"SW/PO/"+new Date().getFullYear()+"/"+String(existing.length+1).padStart(4,"0"),
+        vendorName, vendorContact: document.getElementById("poVendorContact").value.trim(),
+        deliveryDate: document.getElementById("poDeliveryDate").value||null,
+        paymentTerms: document.getElementById("poPaymentTerms").value.trim(),
+        items, status:"draft", raisedBy:user.id
+      });
+      U.closeModal("genericModal"); renderPO();
+      U.toast("Purchase Order created.", {type:"success"});
+    });
+  }
+
+  function openPIModal(poId){
+    const po = DB.purchaseOrders.get(poId);
+    document.getElementById("genericModalTitle").textContent = "Record Proforma Invoice";
+    document.getElementById("genericModalBody").innerHTML = `
+      <p class="hint mb-2">Enter the details from the Proforma Invoice sent by ${U.escapeHtml(po.vendorName)} against ${U.escapeHtml(po.poNo)}.</p>
+      <div class="input-group">
+        <div class="field"><label>PI Number</label><input class="input" id="piNumber" placeholder="e.g. PI/2026/0451"></div>
+        <div class="field"><label>PI Date</label><input class="input" type="date" id="piDate"></div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Valid Till</label><input class="input" type="date" id="piValidTill"></div>
+        <div class="field"><label>GST / Tax (%)</label><input class="input" type="number" id="piTaxPct" value="18"></div>
+      </div>
+      <div class="field"><label>Advance Required (%)</label><input class="input" type="number" id="piAdvancePct" placeholder="e.g. 50"></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="piSaveBtn">Save Proforma Invoice</button>`;
+    U.openModal("genericModal");
+    document.getElementById("piSaveBtn").addEventListener("click", ()=>{
+      const piNumber = document.getElementById("piNumber").value.trim();
+      if(!piNumber){ U.toast("Enter the PI number.", {type:"danger"}); return; }
+      DB.purchaseOrders.update(poId, {
+        piNumber, piDate: document.getElementById("piDate").value||null,
+        piValidTill: document.getElementById("piValidTill").value||null,
+        piTaxPct: +document.getElementById("piTaxPct").value||0,
+        piAdvancePct: +document.getElementById("piAdvancePct").value||0,
+        status:"pi_received"
+      });
+      U.closeModal("genericModal"); renderPO();
+      U.toast("Proforma Invoice recorded.", {type:"success"});
+    });
+  }
+
+  function printPO(po){
+    const pmUser = DB.users.get(project.pmId);
+    const pmCompany = pmUser ? (DB.companies.list(c=>c.ownerId===pmUser.id)[0]||{}) : {};
+    const rows = (po.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${U.escapeHtml(i.unit)}</td><td>${i.qty}</td><td>${U.fmtINR(i.rate)}</td><td>${U.fmtINR(i.qty*i.rate)}</td></tr>`).join("");
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>${U.escapeHtml(po.poNo)} — Purchase Order</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
+      .meta{text-align:right;font-size:12px;color:#555;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
+      .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
+      <div class="title">Purchase Order</div>
+      <p style="font-size:13px"><b>PO No:</b> ${U.escapeHtml(po.poNo)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(po.createdAt)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
+      <p style="font-size:13px"><b>Vendor:</b> ${U.escapeHtml(po.vendorName)} ${po.vendorContact?`(${U.escapeHtml(po.vendorContact)})`:""}</p>
+      ${po.deliveryDate?`<p style="font-size:13px"><b>Delivery Required By:</b> ${U.fmtDate(po.deliveryDate)}</p>`:""}
+      <table><thead><tr><th>Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot><tr><td colspan="4" style="text-align:right"><b>Total</b></td><td><b>${U.fmtINR(poTotal(po))}</b></td></tr></tfoot></table>
+      ${po.paymentTerms?`<p style="font-size:13px"><b>Payment Terms:</b> ${U.escapeHtml(po.paymentTerms)}</p>`:""}
+      <div class="signoff"><div>Vendor Acknowledgement</div><div>${pmUser?U.escapeHtml(pmUser.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Status: ${po.status}</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
+  }
+
+  function printPI(po){
+    const rows = (po.items||[]).map(i=>`<tr><td>${U.escapeHtml(i.desc)}</td><td>${U.escapeHtml(i.unit)}</td><td>${i.qty}</td><td>${U.fmtINR(i.rate)}</td><td>${U.fmtINR(i.qty*i.rate)}</td></tr>`).join("");
+    const subtotal = poTotal(po);
+    const tax = subtotal * ((po.piTaxPct||0)/100);
+    const grand = subtotal + tax;
+    const advance = grand * ((po.piAdvancePct||0)/100);
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>${U.escapeHtml(po.piNumber)} — Proforma Invoice</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
+      .brand{font-weight:800;font-size:20px;color:#5B5CEB;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
+      .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th{background:#f3f4f6;}
+      .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <div class="brand">${U.escapeHtml(po.vendorName)}</div>
+      <div class="title">Proforma Invoice</div>
+      <p style="font-size:13px"><b>PI No:</b> ${U.escapeHtml(po.piNumber)} &nbsp;|&nbsp; <b>Date:</b> ${po.piDate?U.fmtDate(po.piDate):"—"} &nbsp;|&nbsp; <b>Valid Till:</b> ${po.piValidTill?U.fmtDate(po.piValidTill):"—"}</p>
+      <p style="font-size:13px"><b>Against PO:</b> ${U.escapeHtml(po.poNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
+      <table><thead><tr><th>Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody>
+      <tfoot>
+        <tr><td colspan="4" style="text-align:right">Subtotal</td><td>${U.fmtINR(subtotal)}</td></tr>
+        <tr><td colspan="4" style="text-align:right">GST / Tax (${po.piTaxPct||0}%)</td><td>${U.fmtINR(tax)}</td></tr>
+        <tr><td colspan="4" style="text-align:right"><b>Grand Total</b></td><td><b>${U.fmtINR(grand)}</b></td></tr>
+        ${po.piAdvancePct?`<tr><td colspan="4" style="text-align:right">Advance Required (${po.piAdvancePct}%)</td><td>${U.fmtINR(advance)}</td></tr>`:""}
+      </tfoot></table>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>Reference: ${U.escapeHtml(po.poNo)}</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
+  }
+
   /* ================= RECONCILIATION ================= */
   function renderReconciliation(){
     const items = projectBoqItems();
@@ -1586,7 +1823,7 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
@@ -1606,6 +1843,7 @@
     "EOT Requests: once one or more hindrances have a delay period set, raise a formal EOT Request by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft to keep editing, or Submit for Approval. The Project Manager can Approve (which updates the project's completion date), Return for Revision with a comment, or Reject. Every request can be printed as a professional EOT letter with full chronology and revision history.",
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
+    "Purchase Orders: raise a PO to any material vendor with an item table (paste from Excel supported), then record the vendor's Proforma Invoice (PI number, validity, GST%, advance%) once received. Status moves Draft → Sent → PI Received → Confirmed → Goods Received, with a professional print view for both the PO and the PI.",
     "Payment Requests: a lightweight way to formally request release of funds against measured or billed work."
   ]);
 })();
