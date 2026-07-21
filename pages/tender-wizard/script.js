@@ -121,6 +121,7 @@
     const text = (e.clipboardData||window.clipboardData).getData("text");
     if(!text.includes("\t") && !text.includes("\n")) return; // let normal single-cell paste happen
     e.preventDefault();
+    td.blur(); // commit any pending blur-driven update BEFORE we write the pasted values, so it can't clobber them
     const grid = U.parsePastedTable(text);
     const startRow = +td.closest("tr").dataset.idx;
     const fields = ["description","unit","qty"];

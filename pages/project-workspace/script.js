@@ -377,6 +377,158 @@
       </div>`;
   }
 
+  /* ================= WORK PLAN ================= */
+  function workPlanStatusBadge(status){
+    return { planned:"badge-info", in_progress:"badge-warning", completed:"badge-success" }[status] || "badge-neutral";
+  }
+  function renderWorkPlan(){
+    const plans = DB.workPlans.list(w=>w.projectId===project.id).sort((a,b)=> new Date(b.dateFrom||0)-new Date(a.dateFrom||0));
+    const panel = document.getElementById("panelWorkPlan");
+    panel.innerHTML = `
+      <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:520px">Plan ahead — define the labour, material and equipment needed for an upcoming period. Either side can add or update a plan.</p>
+        <button class="btn btn-primary btn-sm" id="addWorkPlanBtn">+ Add Work Plan</button>
+      </div>
+      ${plans.length ? plans.map(w=>{
+        const creator = DB.users.get(w.createdBy);
+        const task = w.ganttTaskId ? DB.ganttTasks.get(w.ganttTaskId) : null;
+        const canManage = isPM || w.createdBy===user.id;
+        return `<div class="card mb-3">
+          <div class="flex justify-between items-start mb-2" style="flex-wrap:wrap;gap:10px">
+            <div><b>${U.fmtDate(w.dateFrom)} – ${U.fmtDate(w.dateTo)}</b>${task?` · <span class="badge badge-accent">${U.escapeHtml(task.name)}</span>`:""}</div>
+            <span class="badge ${workPlanStatusBadge(w.status)}">${(w.status||"planned").replace("_"," ")}</span>
+          </div>
+          <div class="grid grid-3 mb-2">
+            <div><div class="text-muted" style="font-size:11px">LABOUR</div>${(w.labour||[]).length ? w.labour.map(l=>`<div style="font-size:13px">${U.escapeHtml(l.trade)}: <b>${l.count}</b></div>`).join("") : `<span class="text-muted" style="font-size:12px">—</span>`}</div>
+            <div><div class="text-muted" style="font-size:11px">MATERIAL</div>${(w.material||[]).length ? w.material.map(m=>`<div style="font-size:13px">${U.escapeHtml(m.item)}: <b>${m.qty} ${U.escapeHtml(m.unit)}</b></div>`).join("") : `<span class="text-muted" style="font-size:12px">—</span>`}</div>
+            <div><div class="text-muted" style="font-size:11px">EQUIPMENT</div><div style="font-size:13px">${U.escapeHtml(w.equipment||"—")}</div></div>
+          </div>
+          ${w.remarks ? `<p style="font-size:13px" class="mb-2"><b>Remarks:</b> ${U.escapeHtml(w.remarks)}</p>` : ""}
+          <div class="flex justify-between items-center">
+            <span class="text-muted" style="font-size:11px">By ${creator?U.escapeHtml(creator.name):"—"} (${creator?SW.UI.roleLabel(creator.role):"—"}) · ${U.relativeTime(w.createdAt)}</span>
+            ${canManage ? `<div class="flex gap-2">
+              <select class="select wp-status-select" data-wp="${w.id}" style="max-width:150px">
+                <option value="planned" ${w.status==='planned'?'selected':''}>Planned</option>
+                <option value="in_progress" ${w.status==='in_progress'?'selected':''}>In Progress</option>
+                <option value="completed" ${w.status==='completed'?'selected':''}>Completed</option>
+              </select>
+              <button class="btn btn-sm btn-outline" data-edit-wp="${w.id}">Edit</button>
+              <button class="btn btn-sm btn-ghost" data-delete-wp="${w.id}">Delete</button>
+            </div>` : ""}
+          </div>
+        </div>`;
+      }).join("") : `<div class="empty-state"><div class="es-icon">📅</div>No work plans yet.</div>`}`;
+    document.getElementById("addWorkPlanBtn").addEventListener("click", ()=> openWorkPlanModal());
+    panel.addEventListener("change", e=>{
+      if(e.target.classList.contains("wp-status-select")){
+        DB.workPlans.update(e.target.dataset.wp, {status:e.target.value});
+        U.toast("Status updated.", {type:"success"});
+        renderWorkPlan();
+      }
+    });
+    panel.addEventListener("click", e=>{
+      const edit = e.target.closest("[data-edit-wp]");
+      const del = e.target.closest("[data-delete-wp]");
+      if(edit) openWorkPlanModal(edit.dataset.editWp);
+      if(del){
+        if(!confirm("Delete this work plan?")) return;
+        DB.workPlans.remove(del.dataset.deleteWp);
+        U.toast("Work plan deleted.", {type:"warning"});
+        renderWorkPlan();
+      }
+    });
+  }
+
+  function wpRowsHtml(rows, cols){
+    return rows.map((r,idx)=>`<tr data-idx="${idx}">${cols.map(c=>`<td contenteditable="true" data-field="${c}">${U.escapeHtml(r[c]||"")}</td>`).join("")}<td><button class="btn btn-icon btn-ghost" data-wp-rm-row>🗑</button></td></tr>`).join("");
+  }
+
+  function openWorkPlanModal(planId){
+    const plan = planId ? DB.workPlans.get(planId) : null;
+    let labourRows = plan ? (plan.labour||[]).map(r=>Object.assign({},r)) : [{trade:"",count:""}];
+    let materialRows = plan ? (plan.material||[]).map(r=>Object.assign({},r)) : [{item:"",qty:"",unit:""}];
+    const tasks = DB.ganttTasks.list(g=>g.projectId===project.id);
+    document.getElementById("genericModalTitle").textContent = plan ? "Edit Work Plan" : "Add Work Plan";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="input-group">
+        <div class="field"><label>From Date</label><input class="input" type="date" id="wpFrom" value="${plan?plan.dateFrom||'':''}"></div>
+        <div class="field"><label>To Date</label><input class="input" type="date" id="wpTo" value="${plan?plan.dateTo||'':''}"></div>
+      </div>
+      <div class="field"><label>Linked Gantt Task (optional)</label><select class="select" id="wpTask"><option value="">— None —</option>${tasks.map(t=>`<option value="${t.id}" ${plan&&plan.ganttTaskId===t.id?'selected':''}>${U.escapeHtml(t.name)}</option>`).join("")}</select></div>
+      <label class="mb-1" style="font-weight:600;font-size:13px">Labour Required</label>
+      <p class="hint mb-1">Paste rows from Excel (Trade, Count) directly into the first cell.</p>
+      <div class="table-wrap mb-2"><table class="dtable" id="wpLabourTable"><thead><tr><th>Trade</th><th>Count</th><th></th></tr></thead><tbody id="wpLabourBody">${wpRowsHtml(labourRows,["trade","count"])}</tbody></table></div>
+      <button class="btn btn-outline btn-sm mb-3" id="wpAddLabourRow">+ Add Labour Row</button>
+      <label class="mb-1" style="font-weight:600;font-size:13px">Material Required</label>
+      <p class="hint mb-1">Paste rows from Excel (Item, Qty, Unit) directly into the first cell.</p>
+      <div class="table-wrap mb-2"><table class="dtable" id="wpMaterialTable"><thead><tr><th>Item</th><th>Qty</th><th>Unit</th><th></th></tr></thead><tbody id="wpMaterialBody">${wpRowsHtml(materialRows,["item","qty","unit"])}</tbody></table></div>
+      <button class="btn btn-outline btn-sm mb-3" id="wpAddMaterialRow">+ Add Material Row</button>
+      <div class="field"><label>Equipment (comma separated)</label><input class="input" id="wpEquipment" value="${plan?U.escapeHtml(plan.equipment||''):''}" placeholder="e.g. JCB, Tower Crane, Concrete Mixer"></div>
+      <div class="field"><label>Remarks</label><textarea class="textarea" id="wpRemarks">${plan?U.escapeHtml(plan.remarks||''):''}</textarea></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="wpSaveBtn">${plan?'Save Changes':'Create Work Plan'}</button>`;
+    U.openModal("genericModal");
+
+    function bindTable(tbodyId, rowsRef, cols){
+      const tbody = document.getElementById(tbodyId);
+      tbody.addEventListener("blur", e=>{
+        const td = e.target.closest("td[data-field]"); if(!td) return;
+        const idx = +td.closest("tr").dataset.idx;
+        rowsRef[idx][td.dataset.field] = td.textContent.trim();
+      }, true);
+      tbody.addEventListener("click", e=>{
+        if(e.target.closest("[data-wp-rm-row]")){
+          const idx = +e.target.closest("tr").dataset.idx;
+          rowsRef.splice(idx,1);
+          if(!rowsRef.length){ const empty={}; cols.forEach(c=>empty[c]=""); rowsRef.push(empty); }
+          tbody.innerHTML = wpRowsHtml(rowsRef, cols);
+        }
+      });
+      tbody.addEventListener("paste", e=>{
+        const td = e.target.closest("td[data-field]"); if(!td) return;
+        const text = (e.clipboardData||window.clipboardData).getData("text");
+        if(!text.includes("\t") && !text.includes("\n")) return;
+        e.preventDefault();
+        td.blur(); // commit any pending blur-driven update BEFORE we write the pasted values, so it can't clobber them
+        const grid = U.parsePastedTable(text);
+        const startRow = +td.closest("tr").dataset.idx;
+        const startFieldIdx = cols.indexOf(td.dataset.field);
+        grid.forEach((row, rOff)=>{
+          const rIdx = startRow + rOff;
+          while(rowsRef.length<=rIdx){ const empty={}; cols.forEach(c=>empty[c]=""); rowsRef.push(empty); }
+          row.forEach((cell, cOff)=>{
+            const fIdx = startFieldIdx + cOff;
+            if(fIdx>=0 && fIdx<cols.length) rowsRef[rIdx][cols[fIdx]] = cell.trim();
+          });
+        });
+        tbody.innerHTML = wpRowsHtml(rowsRef, cols);
+        U.toast(`Pasted ${grid.length} row(s).`, {type:"success"});
+      });
+    }
+    bindTable("wpLabourBody", labourRows, ["trade","count"]);
+    bindTable("wpMaterialBody", materialRows, ["item","qty","unit"]);
+    document.getElementById("wpAddLabourRow").addEventListener("click", ()=>{ labourRows.push({trade:"",count:""}); document.getElementById("wpLabourBody").innerHTML = wpRowsHtml(labourRows,["trade","count"]); });
+    document.getElementById("wpAddMaterialRow").addEventListener("click", ()=>{ materialRows.push({item:"",qty:"",unit:""}); document.getElementById("wpMaterialBody").innerHTML = wpRowsHtml(materialRows,["item","qty","unit"]); });
+
+    document.getElementById("wpSaveBtn").addEventListener("click", ()=>{
+      const dateFrom = document.getElementById("wpFrom").value;
+      const dateTo = document.getElementById("wpTo").value;
+      if(!dateFrom || !dateTo){ U.toast("Set both from and to dates.", {type:"danger"}); return; }
+      const data = {
+        projectId:project.id, dateFrom, dateTo, ganttTaskId: document.getElementById("wpTask").value||null,
+        labour: labourRows.filter(r=>r.trade && r.trade.trim()).map(r=>({trade:r.trade.trim(), count:+r.count||0})),
+        material: materialRows.filter(r=>r.item && r.item.trim()).map(r=>({item:r.item.trim(), qty:+r.qty||0, unit:(r.unit||"").trim()||"Nos"})),
+        equipment: document.getElementById("wpEquipment").value.trim(),
+        remarks: document.getElementById("wpRemarks").value.trim()
+      };
+      if(plan) DB.workPlans.update(plan.id, data);
+      else DB.workPlans.create(Object.assign({status:"planned", createdBy:user.id}, data));
+      const otherId = isPM ? project.contractorId : project.pmId;
+      if(otherId) DB.notifications.create({ userId:otherId, title: plan?"Work plan updated":"New work plan added", body:`${U.fmtDate(dateFrom)} – ${U.fmtDate(dateTo)} on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=workplan" });
+      U.closeModal("genericModal"); renderWorkPlan();
+      U.toast(plan?"Work plan updated.":"Work plan created.", {type:"success"});
+    });
+  }
+
   /* ================= MB SHEET ================= */
   // Standard reference weights (IS 1786 for TMT bars: w = d²/162 kg/m; MS plate: thickness(mm) × 7.85 kg/sqm;
   // MS pipe: approx medium-class values). Grouped for the Factor preset dropdown.
@@ -934,7 +1086,7 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderMB(); renderExtraItems(); renderRABill(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
@@ -944,6 +1096,7 @@
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
+    "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range, optionally linked to a Gantt task. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables.",
     "MB Sheet: every row is measured against a specific BOQ item (official or an approved Extra Item) picked from a dropdown — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate that also switch the row to a weight unit (kg). The abstract sums every row per BOQ item automatically and converts kg → MT when that item is billed in MT/Tons.",
     "RA Bill: for item-wise BOQs, claim against each item using % complete or a manual cumulative quantity — this-bill qty/amount is auto-computed from the last billed cumulative. Retention, advance recovery, GST and TDS are then calculated automatically. Project Managers approve or reject.",
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",

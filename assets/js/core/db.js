@@ -10,7 +10,7 @@
   const COLLECTIONS = [
     "users","companies","masterProjects","tenders","boqItems","bids","bidItems","comments",
     "revisions","contactUnlocks","lois","workOrders","projects","ganttTasks",
-    "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs",
+    "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs","workPlans",
     "hindrances","paymentRequests","marketplaceListings","marketplaceInquiries",
     "notifications","auditLogs","savedTenders","files","shares","supportTickets","settings"
   ];
