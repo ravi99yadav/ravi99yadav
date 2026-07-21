@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Profile & Settings — SubletWorks.com</title>
+<meta name="description" content="Manage your profile, company details and password.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <h1>Profile &amp; Settings</h1>
+      <p class="text-muted mb-5">Manage your personal details, company profile and password.</p>
+
+      <div class="grid" style="grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card">
+          <h3>Personal Details</h3>
+          <div class="field"><label>Full Name</label><input class="input" id="pName" data-validate="required"><div class="error-msg">Name is required.</div></div>
+          <div class="field"><label>Email</label><input class="input" id="pEmail" disabled></div>
+          <div class="input-group">
+            <div class="field"><label>Mobile Number</label><input class="input" id="pPhone" data-validate="required|phone"><div class="error-msg">Enter a valid 10-digit number.</div></div>
+            <div class="field"><label>Role</label><input class="input" id="pRole" disabled></div>
+          </div>
+          <div class="input-group">
+            <div class="field"><label>District</label><input class="input" id="pDistrict"></div>
+            <div class="field"><label>State</label><input class="input" id="pState"></div>
+          </div>
+          <button class="btn btn-primary" id="savePersonalBtn">Save Personal Details</button>
+        </div>
+
+        <div class="card" id="companyCard">
+          <h3>Company Details</h3>
+          <div class="field"><label>Company Name</label><input class="input" id="cName"></div>
+          <div class="input-group">
+            <div class="field"><label>GSTIN</label><input class="input" id="cGst" data-validate="gst"><div class="error-msg">Enter a valid GSTIN.</div></div>
+            <div class="field"><label>PAN</label><input class="input" id="cPan" data-validate="pan"><div class="error-msg">Enter a valid PAN.</div></div>
+          </div>
+          <div class="input-group">
+            <div class="field"><label>MSME Registration</label><input class="input" id="cMsme" placeholder="e.g. UDYAM-XX-00-0000000"></div>
+            <div class="field"><label>ISO Certification</label><input class="input" id="cIso" placeholder="e.g. ISO 9001:2015"></div>
+          </div>
+          <div class="field contractor-only"><label>Trades / Work Types</label>
+            <div class="doc-badges" id="tradeChecks"></div>
+          </div>
+          <div class="input-group contractor-only">
+            <div class="field"><label>Experience (years)</label><input class="input" type="number" id="cExp"></div>
+            <div class="field"><label>Labour Strength</label><input class="input" type="number" id="cLabour"></div>
+          </div>
+          <div class="field contractor-only"><label>Equipment (comma separated)</label><input class="input" id="cEquip" placeholder="e.g. JCB, Tower Crane, Concrete Mixer"></div>
+          <button class="btn btn-primary" id="saveCompanyBtn">Save Company Details</button>
+        </div>
+      </div>
+
+      <div class="card mt-5" style="max-width:520px">
+        <h3>Change Password</h3>
+        <div class="field"><label>Current Password</label><input class="input" type="password" id="pwCurrent"></div>
+        <div class="field"><label>New Password</label><input class="input" type="password" id="pwNew" data-validate="minlen:6"><div class="error-msg">Minimum 6 characters.</div></div>
+        <div class="field"><label>Confirm New Password</label><input class="input" type="password" id="pwConfirm"></div>
+        <button class="btn btn-outline" id="changePasswordBtn">Change Password</button>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

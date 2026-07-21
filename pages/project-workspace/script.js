@@ -82,8 +82,9 @@
         barRows += `<div class="gantt-row"><div class="gantt-bar milestone" style="left:${offset}px" title="${U.escapeHtml(t.name)} — ${U.fmtDate(t.start)}" data-task="${t.id}"></div></div>`;
       } else {
         barRows += `<div class="gantt-row">
-          <div class="gantt-bar ${t.critical?'critical':''}" style="left:${offset}px;width:${width}px" data-task="${t.id}" title="${U.escapeHtml(t.name)} (${t.progress||0}%) · ${U.fmtDate(t.start)}–${U.fmtDate(t.end)}${t.dependsOn&&t.dependsOn.length?' · depends on '+t.dependsOn.length+' task(s)':''}">
+          <div class="gantt-bar ${t.critical?'critical':''}" style="left:${offset}px;width:${width}px" data-task="${t.id}" data-start="${t.start}" data-end="${t.end}" title="${U.escapeHtml(t.name)} (${t.progress||0}%) · ${U.fmtDate(t.start)}–${U.fmtDate(t.end)}${t.dependsOn&&t.dependsOn.length?' · depends on '+t.dependsOn.length+' task(s)':''} — drag to move, resize the right edge to extend">
             <div class="progress-fill" style="width:${t.progress||0}%"></div><span style="position:relative;z-index:1">${U.escapeHtml(t.name)}</span>
+            <span class="gantt-resize-handle" data-resize="${t.id}"></span>
           </div>
         </div>`;
       }
@@ -104,10 +105,65 @@
           <div class="gantt-day-header">${dayHeader}</div>${barRows}
         </div></div>
       </div>
-      <p class="hint mt-3">Click any bar to edit its dates, progress or critical-path flag.</p>`;
+      <p class="hint mt-3">Click a bar to edit it, drag its body to move dates, or drag the right edge to extend duration.</p>`;
 
     document.getElementById("addTaskBtn").addEventListener("click", ()=>openTaskModal());
-    U.qsa("[data-task]", panel).forEach(bar=> bar.addEventListener("click", ()=> openTaskModal(bar.dataset.task)));
+    bindGanttInteractions(panel, dayW);
+  }
+
+  function shiftDate(dateStr, days){
+    const d = new Date(dateStr); d.setDate(d.getDate()+days); return d.toISOString().slice(0,10);
+  }
+
+  function bindGanttInteractions(panel, dayW){
+    let drag = null; // {type:'move'|'resize', taskId, startX, origLeft, origWidth, bar}
+    U.qsa(".gantt-bar[data-task]", panel).forEach(bar=>{
+      bar.addEventListener("mousedown", e=>{
+        if(e.target.closest("[data-resize]")) return; // handled separately
+        e.preventDefault();
+        drag = { type:"move", taskId:bar.dataset.task, startX:e.clientX, moved:false, bar, origLeft:parseFloat(bar.style.left) };
+      });
+    });
+    U.qsa("[data-resize]", panel).forEach(handle=>{
+      handle.addEventListener("mousedown", e=>{
+        e.preventDefault(); e.stopPropagation();
+        const bar = handle.closest(".gantt-bar");
+        drag = { type:"resize", taskId:handle.dataset.resize, startX:e.clientX, moved:false, bar, origWidth:parseFloat(bar.style.width) };
+      });
+    });
+    function onMouseMove(e){
+      if(!drag) return;
+      const dx = e.clientX - drag.startX;
+      if(Math.abs(dx) > 4) drag.moved = true;
+      if(drag.type==="move") drag.bar.style.left = (drag.origLeft + dx) + "px";
+      else drag.bar.style.width = Math.max(dayW, drag.origWidth + dx) + "px";
+    }
+    function onMouseUp(){
+      if(!drag) return;
+      if(drag.moved){
+        const task = DB.ganttTasks.get(drag.taskId);
+        const dayDelta = Math.round((drag.type==="move" ? (parseFloat(drag.bar.style.left)-drag.origLeft) : 0) / dayW);
+        if(drag.type==="move" && dayDelta!==0){
+          DB.ganttTasks.update(task.id, { start: shiftDate(task.start, dayDelta), end: shiftDate(task.end, dayDelta) });
+          U.toast("Task dates updated.", {type:"success"});
+        } else if(drag.type==="resize"){
+          const newWidthDays = Math.max(1, Math.round(parseFloat(drag.bar.style.width) / dayW));
+          const newEnd = shiftDate(task.start, newWidthDays);
+          if(newEnd !== task.end){ DB.ganttTasks.update(task.id, { end:newEnd }); U.toast("Task duration updated.", {type:"success"}); }
+        }
+        recalcProjectProgress();
+        renderGantt();
+      } else if(drag.type==="move"){
+        openTaskModal(drag.taskId);
+      }
+      drag = null;
+    }
+    document.removeEventListener("mousemove", panel._ganttMouseMove||(()=>{}));
+    document.removeEventListener("mouseup", panel._ganttMouseUp||(()=>{}));
+    panel._ganttMouseMove = onMouseMove;
+    panel._ganttMouseUp = onMouseUp;
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
   }
 
   function openTaskModal(taskId){
@@ -383,7 +439,7 @@
       const bill = DB.raBills.create({ projectId:project.id, billNo:"RA-"+String(bills.length+1).padStart(2,"0"), billDate:DB.nowISO(),
         previousBillAmount:prevAmount, currentGrossAmount:gross, retentionPct:+document.getElementById("rbRetention").value||0,
         advanceRecovery:+document.getElementById("rbAdvance").value||0, gstPct:+document.getElementById("rbGst").value||0, tdsPct:+document.getElementById("rbTds").value||0, status:"pending" });
-      DB.notifications.create({ userId:project.pmId, title:"New RA Bill submitted", body:`${bill.billNo} raised for "${project.name}".`, read:false });
+      DB.notifications.create({ userId:project.pmId, title:"New RA Bill submitted", body:`${bill.billNo} raised for "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=rabill" });
       U.closeModal("genericModal"); renderRABill(); U.toast("RA Bill submitted for approval.", {type:"success"});
     });
   }
@@ -458,7 +514,7 @@
         const desc = document.getElementById("hDesc").value.trim();
         if(!desc){ U.toast("Describe the hindrance.", {type:"danger"}); return; }
         DB.hindrances.create({ projectId:project.id, type:document.getElementById("hType").value, description:desc, raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
-        DB.notifications.create({ userId:project.pmId, title:"New hindrance raised", body:`${document.getElementById("hType").value} reported on "${project.name}".`, read:false });
+        DB.notifications.create({ userId:project.pmId, title:"New hindrance raised", body:`${document.getElementById("hType").value} reported on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
         U.closeModal("genericModal"); renderHindrance(); U.toast("Hindrance submitted to Project Manager.", {type:"success"});
       });
     });
@@ -490,7 +546,7 @@
         const amount = +document.getElementById("payAmount").value||0;
         if(!amount){ U.toast("Enter an amount.", {type:"danger"}); return; }
         DB.paymentRequests.create({ projectId:project.id, amount, note:document.getElementById("payNote").value.trim(), raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
-        DB.notifications.create({ userId:project.pmId, title:"New payment request", body:`${U.fmtINR(amount)} requested on "${project.name}".`, read:false });
+        DB.notifications.create({ userId:project.pmId, title:"New payment request", body:`${U.fmtINR(amount)} requested on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=payments" });
         U.closeModal("genericModal"); renderPayments(); U.toast("Payment request submitted.", {type:"success"});
       });
     });
@@ -503,6 +559,8 @@
 
   renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderMB(); renderRABill(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
+  const requestedTab = params.get("tab");
+  if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",

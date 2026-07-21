@@ -78,26 +78,58 @@
     sortKey = btn.dataset.sort; applyFilters();
   }));
 
+  function openInviteModal(contractorId, name){
+    document.getElementById("inviteContractorName").textContent = name;
+    const tenders = DB.tenders.list(t=>t.pmId===user.id && t.status==="published");
+    document.getElementById("inviteTenderList").innerHTML = tenders.length ? tenders.map(t=>`
+      <div class="attn-row" style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+        <span>${U.escapeHtml(t.title)}</span>
+        <button class="btn btn-primary btn-sm" data-send-invite="${t.id}" data-contractor="${contractorId}">Send Invite</button>
+      </div>`).join("") : `<div class="empty-state">You have no published tenders yet. <a href="../tender-wizard/index.html">Create one →</a></div>`;
+    U.openModal("inviteModal");
+  }
+
+  function openProfileModal(contractorId){
+    const c = getContractors().find(x=>x.userId===contractorId);
+    if(!c) return;
+    const projects = DB.projects.list(p=>p.contractorId===contractorId);
+    const completed = projects.filter(p=>p.status==="completed").length;
+    const running = projects.filter(p=>p.status==="running").length;
+    document.getElementById("profileModalBody").innerHTML = `
+      <div class="flex justify-between items-start mb-3" style="flex-wrap:wrap;gap:10px">
+        <div><h3 style="margin:0">${U.escapeHtml(c.name||"Unnamed Company")}</h3><p class="text-muted" style="margin:4px 0">${U.escapeHtml(c.district||"—")}, ${U.escapeHtml(c.state||"—")}</p></div>
+        <span class="badge badge-warning" style="font-size:14px">★ ${(c.rating||4.0).toFixed(1)} rating</span>
+      </div>
+      <div class="cc-tags mb-3">${(c.trades||[]).map(t=>`<span class="badge badge-info">${U.escapeHtml(t)}</span>`).join("") || '<span class="text-muted" style="font-size:13px">No trades listed.</span>'}</div>
+      <div class="grid grid-4 mb-4">
+        <div class="card" style="padding:12px;text-align:center"><b>${c.experienceYears||0}</b><div class="text-muted" style="font-size:11px">Years Experience</div></div>
+        <div class="card" style="padding:12px;text-align:center"><b>${c.labourStrength||0}</b><div class="text-muted" style="font-size:11px">Labour Strength</div></div>
+        <div class="card" style="padding:12px;text-align:center"><b>${running}</b><div class="text-muted" style="font-size:11px">Running Projects</div></div>
+        <div class="card" style="padding:12px;text-align:center"><b>${completed}</b><div class="text-muted" style="font-size:11px">Completed Projects</div></div>
+      </div>
+      <div class="doc-badges mb-3">
+        <span class="badge ${c.gst?'badge-success':'badge-neutral'}">${c.gst?'✓ GST Registered':'GST Not Provided'}</span>
+        <span class="badge ${c.msme?'badge-success':'badge-neutral'}">${c.msme?'✓ MSME Registered':'MSME Not Registered'}</span>
+        <span class="badge ${c.iso?'badge-success':'badge-neutral'}">${c.iso?'✓ '+U.escapeHtml(c.iso):'No ISO Certification'}</span>
+      </div>
+      <h4>Equipment</h4>
+      <p style="font-size:13px">${(c.equipment||[]).map(U.escapeHtml).join(", ") || "Not listed."}</p>
+      <p class="hint mt-3">Ratings and project history are tracked automatically from completed SubletWorks contracts.</p>`;
+    document.getElementById("profileInviteBtn").onclick = ()=>{ U.closeModal("profileModal"); openInviteModal(c.userId, c.name); };
+    U.openModal("profileModal");
+  }
+
   document.getElementById("resultsGrid").addEventListener("click", e=>{
     const inviteBtn = e.target.closest("[data-invite]");
     const viewBtn = e.target.closest("[data-view]");
-    if(inviteBtn){
-      document.getElementById("inviteContractorName").textContent = inviteBtn.dataset.name;
-      const tenders = DB.tenders.list(t=>t.pmId===user.id && t.status==="published");
-      document.getElementById("inviteTenderList").innerHTML = tenders.length ? tenders.map(t=>`
-        <div class="attn-row" style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
-          <span>${U.escapeHtml(t.title)}</span>
-          <button class="btn btn-primary btn-sm" data-send-invite="${t.id}" data-contractor="${inviteBtn.dataset.invite}">Send Invite</button>
-        </div>`).join("") : `<div class="empty-state">You have no published tenders yet. <a href="../tender-wizard/index.html">Create one →</a></div>`;
-      U.openModal("inviteModal");
-    }
-    if(viewBtn) U.toast("Full public contractor profile page coming from this card — company docs, past project gallery and reviews.", {title:"Profile preview"});
+    if(inviteBtn) openInviteModal(inviteBtn.dataset.invite, inviteBtn.dataset.name);
+    if(viewBtn) openProfileModal(viewBtn.dataset.view);
   });
 
   document.getElementById("inviteTenderList").addEventListener("click", e=>{
     const btn = e.target.closest("[data-send-invite]");
     if(!btn) return;
-    DB.notifications.create({ userId:btn.dataset.contractor, title:"You've been invited to bid", body:"A Project Manager invited you to submit a bid on a tender matching your trade.", read:false });
+    DB.notifications.create({ userId:btn.dataset.contractor, title:"You've been invited to bid", body:"A Project Manager invited you to submit a bid on a tender matching your trade.", read:false, link:"/pages/tender-detail/index.html?id="+btn.dataset.sendInvite });
     U.toast("Invitation sent to contractor.", {title:"Invited", type:"success"});
     U.closeModal("inviteModal");
   });

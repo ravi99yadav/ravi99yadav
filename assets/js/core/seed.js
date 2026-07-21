@@ -126,10 +126,10 @@
     DB.marketplaceListings.create({ sellerId:contractor2.id, sellerRole:"contractor", category:"Scrap", title:"MS Scrap – Site Clearance", quantity:"3.5 MT", condition:"Scrap", price:32000, priceUnit:"lump sum", district:"Gurugram", state:"Haryana", description:"Mixed MS scrap from dismantled shuttering, urgent sale.", status:"active" });
 
     // Notifications
-    DB.notifications.create({ userId:pm.id, title:"New bid received", body:"Deepak Infra Works submitted a bid on 'Structural & Civil Work – Sector 82'.", read:false });
-    DB.notifications.create({ userId:pm.id, title:"RA Bill pending approval", body:"RA-02 submitted for Sector 45 Villas Phase 1.", read:false });
-    DB.notifications.create({ userId:contractor.id, title:"Comment on your bid", body:"Project Manager requested revision on RCC column rate.", read:false });
-    DB.notifications.create({ userId:contractor.id, title:"Payment request update", body:"Your payment request of ₹6,20,000 is under review.", read:true });
+    DB.notifications.create({ userId:pm.id, title:"New bid received", body:"Deepak Infra Works submitted a bid on 'Structural & Civil Work – Sector 82'.", read:false, link:"/pages/tender-detail/index.html?id="+t1.id });
+    DB.notifications.create({ userId:pm.id, title:"RA Bill pending approval", body:"RA-02 submitted for Sector 45 Villas Phase 1.", read:false, link:"/pages/project-workspace/index.html?id="+proj.id });
+    DB.notifications.create({ userId:contractor.id, title:"Comment on your bid", body:"Project Manager requested revision on RCC column rate.", read:false, link:"/pages/tender-detail/index.html?id="+t1.id });
+    DB.notifications.create({ userId:contractor.id, title:"Payment request update", body:"Your payment request of ₹6,20,000 is under review.", read:true, link:"/pages/project-workspace/index.html?id="+proj.id });
 
     DB.markSeeded();
   }

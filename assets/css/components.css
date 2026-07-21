@@ -233,7 +233,10 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .gantt-day-cell{width:32px;flex:none;text-align:center;font-size:10px;color:var(--text-muted);padding:6px 0;border-right:1px solid var(--border);}
 .gantt-day-cell.weekend{background:var(--surface-2);}
 .gantt-row{position:relative;height:38px;border-bottom:1px solid var(--border);}
-.gantt-bar{position:absolute;top:6px;height:26px;border-radius:8px;background:var(--sw-gradient-brand);box-shadow:var(--shadow-sm);display:flex;align-items:center;padding:0 8px;font-size:10px;color:#fff;white-space:nowrap;overflow:hidden;cursor:pointer;}
+.gantt-bar{position:absolute;top:6px;height:26px;border-radius:8px;background:var(--sw-gradient-brand);box-shadow:var(--shadow-sm);display:flex;align-items:center;padding:0 8px;font-size:10px;color:#fff;white-space:nowrap;overflow:visible;cursor:grab;user-select:none;}
+.gantt-bar:active{cursor:grabbing;}
+.gantt-resize-handle{position:absolute;right:-3px;top:0;bottom:0;width:8px;cursor:col-resize;}
+.gantt-resize-handle::after{content:"";position:absolute;right:2px;top:4px;bottom:4px;width:3px;border-radius:2px;background:rgba(255,255,255,.6);}
 .gantt-bar.milestone{width:16px !important;height:16px;border-radius:4px;transform:rotate(45deg);top:11px;background:var(--sw-accent);}
 .gantt-bar.critical{background:var(--sw-gradient-warm);}
 .gantt-bar .progress-fill{position:absolute;left:0;top:0;bottom:0;background:rgba(255,255,255,.35);border-radius:8px 0 0 8px;}

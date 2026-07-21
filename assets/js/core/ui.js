@@ -87,7 +87,7 @@
       <button class="avatar" id="profileBtn" style="background:${user.avatarColor||'var(--sw-gradient-accent)'}">${initials(user.name)}</button>
       <div class="dropdown-panel" id="profilePanel">
         <div style="padding:16px;border-bottom:1px solid var(--border)"><b>${U().escapeHtml(user.name)}</b><div class="text-muted" style="font-size:12px">${U().escapeHtml(user.email||user.phone||"")}</div><span class="badge badge-info mt-2">${roleLabel(user.role)}</span></div>
-        <a class="dropdown-item" href="#" id="profileEditLink">Edit Profile</a>
+        <a class="dropdown-item" href="${rp('/pages/profile-settings/index.html')}" id="profileEditLink">Edit Profile</a>
         <a class="dropdown-item" href="#" id="helpLink">Help & FAQ</a>
         <a class="dropdown-item" href="#" id="logoutLink" style="color:var(--sw-danger)">Logout</a>
       </div>
@@ -100,11 +100,26 @@
     const panel = document.getElementById("notifPanel");
     const items = DB().notifications.list(n=>n.userId===user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,20);
     if(!items.length){ panel.innerHTML = `<div class="empty-state" style="padding:32px 16px;"><div class="es-icon">${ICONS.bell}</div>No notifications yet.</div>`; return; }
-    panel.innerHTML = items.map(n=>`
-      <div class="dropdown-item" data-notif-id="${n.id}">
+    const header = items.some(n=>!n.read) ? `<div class="dropdown-item" id="markAllReadBtn" style="justify-content:center;cursor:pointer;font-weight:600;font-size:12px;color:var(--sw-primary)">Mark all as read</div>` : "";
+    panel.innerHTML = header + items.map(n=>`
+      <div class="dropdown-item" data-notif-id="${n.id}" style="cursor:pointer">
         ${!n.read?'<span class="dot-unread"></span>':'<span style="width:8px"></span>'}
         <div><div style="font-size:13px;font-weight:600">${U().escapeHtml(n.title)}</div><div class="text-muted" style="font-size:12px">${U().escapeHtml(n.body||"")}</div><div class="text-muted" style="font-size:11px;margin-top:4px">${U().relativeTime(n.createdAt)}</div></div>
       </div>`).join("");
+    document.getElementById("markAllReadBtn")?.addEventListener("click", ()=>{
+      items.forEach(n=>{ if(!n.read) DB().notifications.update(n.id, {read:true}); });
+      renderNotifPanel(user);
+      document.getElementById("notifBtn")?.querySelector(".dot")?.remove();
+    });
+    panel.querySelectorAll("[data-notif-id]").forEach(el=>{
+      el.addEventListener("click", ()=>{
+        const n = DB().notifications.get(el.dataset.notifId);
+        if(!n) return;
+        if(!n.read) DB().notifications.update(n.id, {read:true});
+        if(n.link) location.href = rp(n.link);
+        else renderNotifPanel(user);
+      });
+    });
   }
 
   function mountCommandPalette(role){

@@ -95,7 +95,7 @@
       loiNo:"SW/LOI/"+new Date().getFullYear()+"/"+String(DB._store.lois.length+1).padStart(4,"0"),
       contractValue: bidTotal(bid), issuedAt:DB.nowISO(), status:"issued" });
     DB.tenders.update(tender.id, { status:"awarded", awardedTo:bid.contractorId });
-    DB.notifications.create({ userId:contractor.id, title:"Letter of Intent issued", body:`LOI ${loi.loiNo} has been generated for "${tender.title}".`, read:false });
+    DB.notifications.create({ userId:contractor.id, title:"Letter of Intent issued", body:`LOI ${loi.loiNo} has been generated for "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
     U.toast("LOI generated successfully.", {title:"Success", type:"success"});
     setTimeout(()=> location.href = "../loi-view/index.html?id="+loi.id, 800);
   }
@@ -140,7 +140,8 @@
     const ranked = rankedBids();
     document.getElementById("bidsTabBtn").textContent = "Bids ("+ranked.length+")";
     if(!ranked.length){ document.getElementById("panelBids").innerHTML = `<div class="empty-state"><div class="es-icon">⚖️</div>No bids received yet.</div>`; return; }
-    document.getElementById("panelBids").innerHTML = ranked.map((r,idx)=>{
+    const exportRow = `<div class="flex justify-between items-center mb-3"><span class="text-muted" style="font-size:13px">Ranked by total bid value (lowest = L1)</span><button class="btn btn-outline btn-sm" id="exportBidsBtn">⬇ Export Comparison CSV</button></div>`;
+    document.getElementById("panelBids").innerHTML = exportRow + ranked.map((r,idx)=>{
       const bid=r.bid, contractor=DB.users.get(bid.contractorId), company=DB.companies.list(c=>c.ownerId===contractor.id)[0]||{};
       const expanded = selectedBidId===bid.id;
       return `<div class="bid-card ${expanded?'expanded':''}" data-bid="${bid.id}">
@@ -232,14 +233,14 @@
         DB.bidItems.update(bi.id, { rate, amount: rate*item.qty });
       });
       DB.bids.update(bid.id, { status:"submitted" });
-      DB.notifications.create({ userId:tender.pmId, title:"Bid revised", body:`${user.name} resubmitted a revised bid on "${tender.title}".`, read:false });
+      DB.notifications.create({ userId:tender.pmId, title:"Bid revised", body:`${user.name} resubmitted a revised bid on "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.toast("Revised bid submitted.", {type:"success"}); renderAll();
     });
     document.getElementById("confirmAcceptBtn")?.addEventListener("click", ()=>{
       DB.bids.update(bid.id, { status:"mutually_accepted" });
       DB.bids.list(b=>b.tenderId===tender.id && b.id!==bid.id).forEach(b=> DB.bids.update(b.id, {status:"not_selected"}));
       DB.tenders.update(tender.id, { status:"awarded", awardedTo:bid.contractorId });
-      DB.notifications.create({ userId:tender.pmId, title:"Bid mutually accepted!", body:`Both sides accepted terms for "${tender.title}". Contact unlock is now available.`, read:false });
+      DB.notifications.create({ userId:tender.pmId, title:"Bid mutually accepted!", body:`Both sides accepted terms for "${tender.title}". Contact unlock is now available.`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.confetti(); U.toast("You've confirmed acceptance. Contact unlock is now available to both sides.", {title:"🎉 Accepted", type:"success"});
       renderAll();
     });
@@ -340,7 +341,7 @@
           DB.bidItems.create({ bidId:bid.id, boqItemId:tr.dataset.item, rate, amount:rate*qty });
         });
       }
-      DB.notifications.create({ userId:tender.pmId, title:"New bid received", body:`${user.name} submitted a bid on "${tender.title}".`, read:false });
+      DB.notifications.create({ userId:tender.pmId, title:"New bid received", body:`${user.name} submitted a bid on "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.toast("Bid submitted successfully!", {title:"Submitted", type:"success"});
       renderAll();
     });
@@ -354,17 +355,26 @@
     const revise = e.target.closest("[data-revise]");
     const send = e.target.closest("[data-send]");
     const itemRemark = e.target.closest("[data-item-remark]");
+    if(e.target.closest("#exportBidsBtn")){
+      const rows = rankedBids().map((r,idx)=>{
+        const c = DB.users.get(r.bid.contractorId);
+        return [rankLabel(idx), c.name, r.bid.mode, r.total, r.bid.status];
+      });
+      U.exportCSV("bid-comparison-"+tender.title.replace(/[^a-z0-9]/gi,"-").toLowerCase(), ["Rank","Contractor","Bid Mode","Total Value","Status"], rows);
+      U.toast("Bid comparison exported to CSV.", {type:"success"});
+      return;
+    }
     if(toggle){ selectedBidId = selectedBidId===toggle.dataset.toggle ? null : toggle.dataset.toggle; renderBids(); return; }
     if(accept){
       DB.bids.update(accept.dataset.accept, {status:"pm_accepted"});
       const bid = DB.bids.get(accept.dataset.accept);
-      DB.notifications.create({ userId:bid.contractorId, title:"Your bid was accepted!", body:`Confirm your acceptance on "${tender.title}" to move forward.`, read:false });
+      DB.notifications.create({ userId:bid.contractorId, title:"Your bid was accepted!", body:`Confirm your acceptance on "${tender.title}" to move forward.`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.toast("Bid accepted — waiting for contractor to confirm.", {type:"success"}); renderAll();
     }
     if(reject){
       DB.bids.update(reject.dataset.reject, {status:"rejected"});
       const bid = DB.bids.get(reject.dataset.reject);
-      DB.notifications.create({ userId:bid.contractorId, title:"Bid update", body:`Your bid on "${tender.title}" was not selected.`, read:false });
+      DB.notifications.create({ userId:bid.contractorId, title:"Bid update", body:`Your bid on "${tender.title}" was not selected.`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.toast("Bid rejected.", {type:"warning"}); renderAll();
     }
     if(revise){
@@ -373,7 +383,7 @@
       DB.bids.update(revise.dataset.revise, {status:"revision_requested"});
       DB.comments.create({ tenderId:tender.id, bidId:revise.dataset.revise, authorId:user.id, authorRole:"pm", text:note||"Please revise your bid." });
       const bid = DB.bids.get(revise.dataset.revise);
-      DB.notifications.create({ userId:bid.contractorId, title:"Revision requested", body:`PM requested a revision on your bid for "${tender.title}".`, read:false });
+      DB.notifications.create({ userId:bid.contractorId, title:"Revision requested", body:`PM requested a revision on your bid for "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
       U.toast("Revision requested.", {type:"warning"}); renderAll();
     }
     if(itemRemark){
@@ -397,7 +407,7 @@
     input.value="";
     const bid = DB.bids.get(bidId);
     const otherId = isPM ? bid.contractorId : tender.pmId;
-    DB.notifications.create({ userId:otherId, title:"New negotiation message", body:`New message on "${tender.title}".`, read:false });
+    DB.notifications.create({ userId:otherId, title:"New negotiation message", body:`New message on "${tender.title}".`, read:false, link:"/pages/tender-detail/index.html?id="+tender.id });
     renderBids();
   }
 

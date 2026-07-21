@@ -92,7 +92,7 @@
         insurance:"Contractor to maintain CAR/WC policy for full contract duration.", retentionPct:tender.retentionPct||0, bgPct:tender.bgRequiredPct||0 });
       let proj = DB.projects.list(p=>p.tenderId===tender.id)[0];
       if(!proj) proj = DB.projects.create({ tenderId:tender.id, workOrderId:wo.id, name:tender.title, pmId:pm.id, contractorId:contractor.id, district:tender.district, state:tender.state, startDate:tender.startDate, endDate:tender.endDate, status:"running", progressPct:0 });
-      DB.notifications.create({ userId:contractor.id, title:"Work Order issued", body:`Work Order ${wo.woNo} issued for "${tender.title}".`, read:false });
+      DB.notifications.create({ userId:contractor.id, title:"Work Order issued", body:`Work Order ${wo.woNo} issued for "${tender.title}".`, read:false, link:"/pages/work-order-view/index.html?id="+wo.id });
       U.toast("Work Order generated.", {title:"Success", type:"success"});
       setTimeout(()=> location.href = "../work-order-view/index.html?id="+wo.id, 700);
     });

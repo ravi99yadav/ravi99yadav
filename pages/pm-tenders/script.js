@@ -3,7 +3,7 @@
   const user = SW.UI.mountShell({ roles:["pm"], active:"pm-tenders" });
   if(!user) return;
   const DB = SW.DB, U = SW.Utils;
-  let statusFilter = "all", search = "";
+  let statusFilter = "all", search = "", currentList = [];
 
   function render(){
     let list = DB.tenders.list(t=>t.pmId===user.id);
@@ -11,6 +11,7 @@
     else { list = list.filter(t=>!t.archived); if(statusFilter!=="all") list = list.filter(t=>t.status===statusFilter); }
     if(search) list = list.filter(t=>t.title.toLowerCase().includes(search.toLowerCase()));
     list.sort((a,b)=> new Date(b.updatedAt)-new Date(a.updatedAt));
+    currentList = list;
 
     document.getElementById("tenderTbody").innerHTML = list.length ? list.map(t=>{
       const bids = DB.bids.list(b=>b.tenderId===t.id);
@@ -62,6 +63,13 @@
       document.getElementById("historyList").innerHTML = logs.length ? logs.map(l=>`<div class="timeline-item"><div class="ti-time">${U.fmtDateTime(l.at)}</div><b>${l.action}</b></div>`).join("") : `<div class="empty-state">No history yet.</div>`;
       U.openModal("historyModal");
     }
+  });
+
+  document.getElementById("exportBtn").addEventListener("click", ()=>{
+    if(!currentList.length){ U.toast("Nothing to export for the current filter.", {type:"warning"}); return; }
+    const rows = currentList.map(t=>[t.title, t.workType, t.district, t.state, t.archived?"archived":t.status, DB.bids.list(b=>b.tenderId===t.id).length, U.fmtDate(t.bidSubmissionDeadline), U.fmtINR(t.estimatedValue)]);
+    U.exportCSV("subletworks-tenders", ["Title","Work Type","District","State","Status","Bids","Bid Deadline","Estimated Value"], rows);
+    U.toast("Tenders exported to CSV.", {type:"success"});
   });
 
   render();

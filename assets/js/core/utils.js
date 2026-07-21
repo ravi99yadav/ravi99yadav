@@ -169,6 +169,21 @@
     return text.replace(/\r/g,"").split("\n").filter(r=>r.length).map(row=>row.split("\t"));
   }
 
+  /* ---------- CSV export ---------- */
+  function exportCSV(filename, headers, rows){
+    function cell(v){
+      const s = String(v==null?"":v);
+      return /[",\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+    }
+    const lines = [headers.map(cell).join(",")].concat(rows.map(r=>r.map(cell).join(",")));
+    const blob = new Blob([lines.join("\r\n")], {type:"text/csv;charset=utf-8;"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename.endsWith(".csv") ? filename : filename+".csv";
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  }
+
   function escapeHtml(s){
     return String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   }
@@ -198,6 +213,6 @@
   global.SW.Utils = {
     startClock, fmtDate, fmtDateTime, fmtINR, daysBetween, relativeTime,
     Validate, validateForm, toast, confetti, openModal, closeModal, bindModalDismiss,
-    bindRipple, initTheme, parsePastedTable, escapeHtml, debounce, qs, qsa, initTabs, DAY_NAMES
+    bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, debounce, qs, qsa, initTabs, DAY_NAMES
   };
 })(window);

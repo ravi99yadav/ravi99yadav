@@ -282,7 +282,7 @@
     const t = saveTender("published");
     // Notify matching contractors
     const matches = DB.companies.list(c=> (c.trades||[]).includes(t.workType) && (c.district||"").toLowerCase()===t.district.toLowerCase());
-    matches.forEach(c=> DB.notifications.create({ userId:c.ownerId, title:"New tender in your area", body:`"${t.title}" — ${t.workType} work in ${t.district}. Bid deadline ${U.fmtDate(t.bidSubmissionDeadline)}.`, read:false }));
+    matches.forEach(c=> DB.notifications.create({ userId:c.ownerId, title:"New tender in your area", body:`"${t.title}" — ${t.workType} work in ${t.district}. Bid deadline ${U.fmtDate(t.bidSubmissionDeadline)}.`, read:false, link:"/pages/tender-detail/index.html?id="+t.id }));
     U.confetti();
     U.toast(`Tender published! ${matches.length} matching contractor(s) notified.`, {title:"🎉 Live", type:"success", duration:5000});
     setTimeout(()=> location.href = "../pm-tenders/index.html", 1200);
