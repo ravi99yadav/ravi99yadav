@@ -129,11 +129,31 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .dtable td[contenteditable="true"]:focus{outline-color:var(--sw-primary);background:rgba(91,92,235,.06);}
 
 /* ---- Tabs ---- */
-.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;}
-.tab-btn{padding:10px 16px;font-size:var(--fs-sm);font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;white-space:nowrap;background:transparent;border-radius:0;}
-.tab-btn.active{color:var(--sw-primary);border-color:var(--sw-primary);}
-.tab-panel{display:none;animation:fadeIn var(--t-med) var(--ease);}
+.tabs{position:relative;display:flex;gap:4px;border-bottom:1px solid var(--border);overflow-x:auto;}
+.tab-btn{padding:10px 16px;font-size:var(--fs-sm);font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;white-space:nowrap;background:transparent;border-radius:0;transition:color var(--t-fast) var(--ease);}
+.tab-btn:hover{color:var(--text);}
+.tab-btn.active{color:var(--sw-primary);border-color:transparent;}
+.tab-indicator{position:absolute;bottom:-1px;height:2px;background:var(--sw-primary);border-radius:2px;transition:left var(--t-med) var(--ease-spring),width var(--t-med) var(--ease-spring);pointer-events:none;}
+.tab-panel{display:none;}
 .tab-panel.active{display:block;}
+.tab-panel.tab-panel-enter{animation:fadeInUp .3s var(--ease);}
+
+/* ---- Row / card entrance stagger ---- */
+.row-enter{animation:fadeIn .35s var(--ease) both;}
+.card-enter{animation:fadeInUp .35s var(--ease) both;}
+
+/* ---- Status badge transitions ---- */
+.status-badge{transition:background var(--t-fast) var(--ease),color var(--t-fast) var(--ease);}
+@keyframes statusFlash{0%{transform:scale(1);}30%{transform:scale(1.18);}100%{transform:scale(1);}}
+.status-badge.flash{animation:statusFlash .4s var(--ease-spring);}
+
+/* ---- EOT Stepper ---- */
+.eot-stepper{display:inline-flex;align-items:center;gap:3px;margin-right:6px;vertical-align:middle;}
+.eot-step{width:8px;height:8px;border-radius:50%;background:var(--border-strong);transition:background .3s var(--ease),transform .3s var(--ease-spring);}
+.eot-step.step-done{background:var(--sw-success);}
+.eot-step.step-pending{background:var(--border-strong);}
+.eot-step.step-rejected{background:var(--sw-danger);}
+.eot-step.step-returned{background:#0284c7;}
 
 /* ---- Modal ---- */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,14,26,.5);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:var(--z-modal);opacity:0;pointer-events:none;transition:opacity var(--t-med) var(--ease);padding:var(--sp-4);}

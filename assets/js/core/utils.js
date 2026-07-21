@@ -224,17 +224,45 @@
   function qs(sel, ctx){ return (ctx||document).querySelector(sel); }
   function qsa(sel, ctx){ return Array.from((ctx||document).querySelectorAll(sel)); }
 
+  function animateCounter(el, target, duration){
+    if(!el) return;
+    duration = duration || 500;
+    const start = 0;
+    const startTime = performance.now();
+    function tick(now){
+      const p = Math.min(1, (now-startTime)/duration);
+      const eased = 1 - Math.pow(1-p, 3);
+      el.textContent = Math.round(start + (target-start)*eased);
+      if(p<1) requestAnimationFrame(tick); else el.textContent = target;
+    }
+    requestAnimationFrame(tick);
+  }
+
   function initTabs(root){
     (root?[root]:qsa(".tabs")).forEach(tabs=>{
       const container = tabs.parentElement;
+      let indicator = tabs.querySelector(".tab-indicator");
+      if(!indicator){ indicator = document.createElement("span"); indicator.className = "tab-indicator"; tabs.appendChild(indicator); }
+      function moveIndicatorTo(btn){
+        if(!btn) return;
+        indicator.style.width = btn.offsetWidth + "px";
+        indicator.style.left = btn.offsetLeft + "px";
+      }
+      moveIndicatorTo(tabs.querySelector(".tab-btn.active"));
       qsa(".tab-btn",tabs).forEach(btn=>{
         btn.addEventListener("click", ()=>{
           qsa(".tab-btn",tabs).forEach(b=>b.classList.remove("active"));
           btn.classList.add("active");
+          moveIndicatorTo(btn);
           const target = btn.dataset.tab;
-          qsa(".tab-panel",container).forEach(p=>p.classList.toggle("active", p.dataset.tabPanel===target));
+          qsa(".tab-panel",container).forEach(p=>{
+            const isTarget = p.dataset.tabPanel===target;
+            if(isTarget){ p.classList.add("active"); p.classList.remove("tab-panel-enter"); void p.offsetWidth; p.classList.add("tab-panel-enter"); }
+            else p.classList.remove("active");
+          });
         });
       });
+      window.addEventListener("resize", debounce(()=> moveIndicatorTo(tabs.querySelector(".tab-btn.active")), 150));
     });
   }
 
@@ -242,6 +270,6 @@
   global.SW.Utils = {
     startClock, fmtDate, fmtDateTime, fmtINR, daysBetween, relativeTime, projectHealth,
     Validate, validateForm, toast, confetti, openModal, closeModal, bindModalDismiss,
-    bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, debounce, qs, qsa, initTabs, DAY_NAMES
+    bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, debounce, qs, qsa, initTabs, animateCounter, DAY_NAMES
   };
 })(window);

@@ -1221,7 +1221,19 @@
   }
   function eotStatusBadge(status){
     const map = { draft:"badge-neutral", submitted:"badge-warning", approved:"badge-success", rejected:"badge-danger", returned:"badge-info" };
-    return `<span class="badge ${map[status]||"badge-neutral"}">${status}</span>`;
+    return `<span class="badge ${map[status]||"badge-neutral"} status-badge">${status}</span>`;
+  }
+  function eotStepper(status){
+    const steps = ["draft","submitted", status==="rejected"?"rejected":status==="returned"?"returned":"approved"];
+    const labels = { draft:"Draft", submitted:"Submitted", approved:"Approved", rejected:"Rejected", returned:"Returned" };
+    const order = ["draft","submitted","approved"];
+    const curIdx = status==="rejected"||status==="returned" ? 1 : order.indexOf(status);
+    return `<div class="eot-stepper">${steps.map((s,i)=>{
+      const done = status==="rejected"||status==="returned" ? i<2 : i<=curIdx;
+      const isCurrent = s===status || (i===steps.length-1 && (status==="rejected"||status==="returned"));
+      const cls = (status==="rejected"&&s==="rejected") ? "step-rejected" : (status==="returned"&&s==="returned") ? "step-returned" : done ? "step-done" : "step-pending";
+      return `<span class="eot-step ${cls}" title="${labels[s]}"></span>`;
+    }).join("")}</div>`;
   }
   function renderHindrance(){
     const list = DB.hindrances.list(h=>h.projectId===project.id).sort((a,b)=>new Date(b.raisedAt)-new Date(a.raisedAt));
@@ -1250,19 +1262,20 @@
         <div class="flex justify-between items-center mb-2"><h3>EOT Requests (${eotRequests.length})</h3>
           <div class="flex gap-2"><button class="btn btn-outline btn-sm" id="exportEotCsvBtn">⬇ Export EOT Register CSV</button><button class="btn btn-outline btn-sm" id="printEotRegisterBtn">🖨 Print EOT Register</button></div>
         </div>
-        ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Request No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Status</th><th>Revised Completion</th><th></th></tr></thead>
-        <tbody>${eotRequests.map(r=>`<tr>
-          <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b>${r.totalDays}</b></td>
-          <td>${eotStatusBadge(r.status)}</td><td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
+        ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Request No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Progress</th><th>Revised Completion</th><th></th></tr></thead>
+        <tbody>${eotRequests.map((r,ri)=>`<tr class="row-enter" style="animation-delay:${ri*40}ms">
+          <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b class="eot-days-counter" data-target="${r.totalDays}">0</b></td>
+          <td>${eotStepper(r.status)} ${eotStatusBadge(r.status)}${r.pmComment ? `<div class="text-muted mt-1" style="font-size:11px;max-width:220px">💬 ${U.escapeHtml(r.pmComment)}</div>` : ""}</td>
+          <td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
           <td class="flex gap-2">
             <button class="btn btn-sm btn-outline" data-eot-view="${r.id}">View</button>
             ${isPM && r.status==="submitted" ? `<button class="btn btn-sm btn-success" data-eot-approve="${r.id}">Approve</button><button class="btn btn-sm btn-outline" data-eot-return="${r.id}">Return</button><button class="btn btn-sm btn-danger" data-eot-reject="${r.id}">Reject</button>` : ""}
-            ${!isPM && (r.status==="draft"||r.status==="returned") ? `<button class="btn btn-sm btn-primary" data-eot-submit="${r.id}">Submit</button>` : ""}
+            ${r.raisedBy===user.id && (r.status==="draft"||r.status==="returned") ? `<button class="btn btn-sm btn-outline" data-eot-edit="${r.id}">Edit</button><button class="btn btn-sm btn-primary" data-eot-submit="${r.id}">Submit</button>` : ""}
           </td>
         </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">📄</div>No EOT requests raised yet.</div>`}
       </div>
-      ${list.length ? list.map(h=>`<div class="hindrance-card">
-        <div><div class="flex gap-2 items-center mb-1">${h.category?`<span class="badge badge-neutral">${U.escapeHtml(h.category)}</span>`:""}<span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.criticalPathImpact?`<span class="badge badge-danger">Critical Path</span>`:""}${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
+      ${list.length ? list.map((h,hi)=>`<div class="hindrance-card card-enter" style="animation-delay:${hi*40}ms">
+        <div><div class="flex gap-2 items-center mb-1">${h.category?`<span class="badge badge-neutral">${U.escapeHtml(h.category)}</span>`:""}<span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge status-badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.criticalPathImpact?`<span class="badge badge-danger">Critical Path</span>`:""}${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
         <p style="font-size:13px;margin:0">${U.escapeHtml(h.description)}</p>
         ${h.evidenceRequired?`<p class="text-muted mt-1" style="font-size:11px;margin:2px 0 0">📎 Evidence required: ${U.escapeHtml(h.evidenceRequired)}</p>`:""}
         <span class="text-muted" style="font-size:11px">${U.relativeTime(h.raisedAt)}</span></div>
@@ -1284,6 +1297,8 @@
     document.getElementById("printEotRegisterBtn")?.addEventListener("click", ()=> printEotRegister(eotRequests));
     document.getElementById("newEotReqBtn")?.addEventListener("click", ()=> openEotRequestModal(qualifying));
     panel.querySelectorAll("[data-eot-view]").forEach(b=> b.addEventListener("click", ()=> printEOTRequestLetter(DB.eotRequests.get(b.dataset.eotView))));
+    panel.querySelectorAll("[data-eot-edit]").forEach(b=> b.addEventListener("click", ()=> openEotRequestModal(qualifying, DB.eotRequests.get(b.dataset.eotEdit))));
+    panel.querySelectorAll(".eot-days-counter").forEach(el=> U.animateCounter(el, +el.dataset.target||0));
     panel.querySelectorAll("[data-eot-submit]").forEach(b=> b.addEventListener("click", ()=>{
       const r = DB.eotRequests.get(b.dataset.eotSubmit);
       DB.eotRequests.update(r.id, { status:"submitted", submittedAt:DB.nowISO() });
@@ -1349,6 +1364,7 @@
         const l = lib.find(x=>x.id===val);
         if(!l){ info.style.display="none"; return; }
         info.style.display="block";
+        info.classList.remove("animate-fadeInUp"); void info.offsetWidth; info.classList.add("animate-fadeInUp");
         info.innerHTML = `
           <p style="font-size:12px;margin:0 0 6px"><b>Typical Root Cause:</b> ${U.escapeHtml(l.rootCause||"—")}</p>
           <p style="font-size:12px;margin:0 0 6px"><b>Typical Impact:</b> ${U.escapeHtml(l.impact||"—")}</p>
@@ -1418,11 +1434,15 @@
       const sel = selectedHindrances();
       const eot = computeEOT(sel);
       const newEndDate = project.endDate && eot.totalDays ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
-      document.getElementById("eotPreview").innerHTML = sel.length ? `
+      const preview = document.getElementById("eotPreview");
+      preview.innerHTML = sel.length ? `
         <p style="font-size:13px;margin:0 0 6px"><b>Merged Delay Periods:</b></p>
         ${eot.merged.map(m=>`<div style="font-size:12px;margin-bottom:4px">${U.fmtDate(m.from)} – ${U.fmtDate(m.to)} (${U.daysBetween(m.from,m.to)+1}d) — ${m.items.map(h=>U.escapeHtml(h.type)).join(", ")}</div>`).join("")}
-        <p style="font-size:13px;margin:8px 0 0"><b>Net EOT Days: ${eot.totalDays}</b> &nbsp;|&nbsp; Revised Completion: <b>${newEndDate?U.fmtDate(newEndDate):"—"}</b></p>
+        <p style="font-size:13px;margin:8px 0 0"><b>Net EOT Days: <span class="eot-days-counter" data-target="${eot.totalDays}">0</span></b> &nbsp;|&nbsp; Revised Completion: <b>${newEndDate?U.fmtDate(newEndDate):"—"}</b></p>
       ` : `<p class="text-muted" style="font-size:12px;margin:0">Select at least one delay event to preview the overlap calculation.</p>`;
+      preview.classList.remove("animate-fadeInUp"); void preview.offsetWidth; preview.classList.add("animate-fadeInUp");
+      const counter = preview.querySelector(".eot-days-counter");
+      if(counter) U.animateCounter(counter, eot.totalDays, 400);
     }
     document.querySelectorAll(".eotHindChk").forEach(c=> c.addEventListener("change", updatePreview));
     updatePreview();
