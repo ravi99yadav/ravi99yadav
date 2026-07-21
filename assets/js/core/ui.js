@@ -166,7 +166,7 @@
 
   function mountQuickCreate(role){
     const map = {
-      pm: [{label:"New Tender", href:"/pages/tender-wizard/index.html"},{label:"New Project Task", href:"/pages/project-workspace/index.html"}],
+      pm: [{label:"New Tender", href:"/pages/tender-wizard/index.html"},{label:"New External Project", href:"/pages/external-project-new/index.html"},{label:"New Project Task", href:"/pages/project-workspace/index.html"}],
       contractor: [{label:"Submit a Bid", href:"/pages/contractor-tenders/index.html"},{label:"New DPR", href:"/pages/project-workspace/index.html"}],
       admin: [{label:"Review Approvals", href:"/pages/admin-dashboard/index.html"}]
     };

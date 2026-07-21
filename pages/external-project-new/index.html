@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>New External Project — SubletWorks.com</title>
+<meta name="description" content="Manage an offline/external contract using SubletWorks project tools without floating a tender.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <h1>New External Project</h1>
+      <p class="text-muted mb-5">Already have a contractor lined up outside SubletWorks? Set up the project here to still use Gantt, Kanban, MB Sheet, RA Billing, DPR and Hindrance tracking — no tender or bidding required.</p>
+
+      <div class="card mb-5">
+        <h3>Project Details</h3>
+        <div class="input-group">
+          <div class="field"><label>Project Name</label><input class="input" id="fName" data-validate="required"><div class="error-msg">Project name is required.</div></div>
+          <div class="field"><label>Contractor / Firm Name</label><input class="input" id="fContractorName" data-validate="required" placeholder="e.g. Rajesh Builders (not a SubletWorks account)"><div class="error-msg">Contractor name is required.</div></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>Contractor Phone (optional)</label><input class="input" id="fContractorPhone"></div>
+          <div class="field"><label>Contractor Email (optional)</label><input class="input" id="fContractorEmail"></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>District</label><input class="input" id="fDistrict" data-validate="required"><div class="error-msg">District is required.</div></div>
+          <div class="field"><label>State</label><input class="input" id="fState" data-validate="required"><div class="error-msg">State is required.</div></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>Start Date</label><input class="input" type="date" id="fStart"></div>
+          <div class="field"><label>End Date</label><input class="input" type="date" id="fEnd"></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>Contract Value (₹)</label><input class="input" type="number" id="fContractValue"></div>
+          <div class="field"><label>Payment Terms (optional)</label><input class="input" id="fPaymentTerms"></div>
+        </div>
+      </div>
+
+      <div class="card mb-5">
+        <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+          <h3>BOQ (optional)</h3>
+          <label class="checkbox-row"><input type="checkbox" id="lumpsumToggle"> This is a lump sum contract (no item-wise BOQ)</label>
+        </div>
+        <div id="boqSection">
+          <div class="flex gap-2 mb-3">
+            <button class="btn btn-outline btn-sm" id="addRowBtn">+ Add Row</button>
+          </div>
+          <p class="hint mb-2">💡 Paste rows copied from Excel (Description, Unit, Qty, Rate) directly into the first cell below.</p>
+          <div class="table-wrap">
+            <table class="dtable" id="boqTable">
+              <thead><tr><th style="width:50px">Sr</th><th>Description</th><th style="width:90px">Unit</th><th style="width:100px">Qty</th><th style="width:110px">Rate (₹)</th><th style="width:50px"></th></tr></thead>
+              <tbody id="boqTbody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn btn-primary btn-lg" id="createBtn">Create External Project</button>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

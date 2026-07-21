@@ -18,8 +18,10 @@
     <div id="navbarMount"></div>
     <main class="app-content page-enter" id="mainContent">
       <div id="projectPicker" class="hidden">
-        <h1>Project Workspace</h1>
-        <p class="text-muted mb-5">Select a project to open its Gantt, Kanban, MB Sheet, RA Bill, DPR and Hindrance tracking.</p>
+        <div class="flex justify-between items-center mb-5" style="flex-wrap:wrap;gap:10px">
+          <div><h1 style="margin:0">Project Workspace</h1><p class="text-muted" style="margin:4px 0 0">Select a project to open its Gantt, Kanban, MB Sheet, RA Bill, DPR and Hindrance tracking.</p></div>
+          <a href="../external-project-new/index.html" class="btn btn-outline no-print" id="newExternalProjectLink">+ New External Project</a>
+        </div>
         <div class="grid grid-3" id="pickerGrid"></div>
       </div>
 
@@ -32,6 +34,7 @@
           <button class="tab-btn" data-tab="calendar">Calendar</button>
           <button class="tab-btn" data-tab="mb">MB Sheet</button>
           <button class="tab-btn" data-tab="rabill">RA Bill</button>
+          <button class="tab-btn" data-tab="reconciliation">Reconciliation</button>
           <button class="tab-btn" data-tab="dpr">DPR</button>
           <button class="tab-btn" data-tab="hindrance">Hindrance</button>
           <button class="tab-btn" data-tab="payments">Payment Requests</button>
@@ -42,6 +45,7 @@
         <div class="tab-panel" data-tab-panel="calendar" id="panelCalendar"></div>
         <div class="tab-panel" data-tab-panel="mb" id="panelMB"></div>
         <div class="tab-panel" data-tab-panel="rabill" id="panelRABill"></div>
+        <div class="tab-panel" data-tab-panel="reconciliation" id="panelReconciliation"></div>
         <div class="tab-panel" data-tab-panel="dpr" id="panelDPR"></div>
         <div class="tab-panel" data-tab-panel="hindrance" id="panelHindrance"></div>
         <div class="tab-panel" data-tab-panel="payments" id="panelPayments"></div>
