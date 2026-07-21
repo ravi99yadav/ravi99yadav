@@ -13,6 +13,12 @@
     SW.UI.render403("This Work Order isn't available to your account.");
     return;
   }
+  SW.UI.contextBar(document.querySelector(".app-content"), {
+    entity:"workOrders", entityId:wo.id,
+    status: wo.status, statusLabel: (wo.status||"").replace(/\b\w/g,c=>c.toUpperCase()),
+    permission: SW.UI.roleLabel(user.role) + (isPM ? " · Issuer" : " · Recipient"),
+    version: wo.version, updatedAt: wo.updatedAt
+  });
   const tender = DB.tenders.get(wo.tenderId);
   const pm = DB.users.get(wo.pmId);
   const contractor = DB.users.get(wo.contractorId);

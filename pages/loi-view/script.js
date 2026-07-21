@@ -13,6 +13,12 @@
     SW.UI.render403("This LOI isn't available to your account.");
     return;
   }
+  SW.UI.contextBar(document.querySelector(".app-content"), {
+    entity:"lois", entityId:loi.id,
+    status: loi.status, statusLabel: (loi.status||"").replace(/\b\w/g,c=>c.toUpperCase()),
+    permission: SW.UI.roleLabel(user.role) + (isPM ? " · Issuer" : " · Recipient"),
+    version: loi.version, updatedAt: loi.updatedAt
+  });
   const tender = DB.tenders.get(loi.tenderId);
   const bid = DB.bids.get(loi.bidId);
   const pm = DB.users.get(loi.pmId);

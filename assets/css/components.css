@@ -74,6 +74,14 @@
 :root[data-theme="dark"] .badge-info{color:#38bdf8;}
 :root[data-theme="dark"] .badge-accent{color:#c084fc;}
 
+/* ---- Context Bar ---- */
+.context-bar{display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:8px 14px;margin-bottom:16px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--border);font-size:var(--fs-xs);}
+.context-bar .cb-item{color:var(--text-muted);}
+.context-bar .cb-clock{font-weight:600;color:var(--text);}
+.cb-audit{margin-bottom:16px;padding:10px 14px;border-radius:var(--r-md);background:var(--surface-2);border:1px solid var(--border);max-height:220px;overflow-y:auto;}
+.cb-audit-row{font-size:var(--fs-xs);padding:5px 0;border-bottom:1px solid var(--border);}
+.cb-audit-row:last-child{border-bottom:none;}
+
 /* ---- Forms ---- */
 .field{position:relative;margin-bottom:var(--sp-5);}
 .field label{display:block;font-size:var(--fs-sm);font-weight:600;margin-bottom:6px;color:var(--text);}

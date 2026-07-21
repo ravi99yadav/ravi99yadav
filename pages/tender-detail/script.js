@@ -19,6 +19,12 @@
     SW.UI.render403("This tender isn't available to your account.", isPM?'../pm-tenders/index.html':'../contractor-tenders/index.html', "Go Back");
     return;
   }
+  SW.UI.contextBar(document.querySelector(".app-content"), {
+    entity:"tenders", entityId:tender.id,
+    status: tender.status, statusLabel: (tender.status||"").replace(/_/g," ").replace(/\b\w/g,c=>c.toUpperCase()),
+    permission: SW.UI.roleLabel(user.role) + (isPM ? " · Owner" : " · Bidder"),
+    version: tender.version, updatedAt: tender.updatedAt
+  });
   let selectedBidId = null;
 
   function boqItems(){ return DB.boqItems.list(i=>i.tenderId===tender.id).sort((a,b)=>a.srNo-b.srNo); }

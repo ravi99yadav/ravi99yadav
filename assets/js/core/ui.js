@@ -330,6 +330,58 @@
     (container||document.querySelector(".app-content")).appendChild(el);
   }
 
+  const CB_STATUS_CLASS = {
+    running:"badge-success", active:"badge-success", approved:"badge-success", resolved:"badge-success", completed:"badge-success",
+    pending:"badge-warning", submitted:"badge-warning", draft:"badge-neutral",
+    acknowledged:"badge-info", returned:"badge-info",
+    rejected:"badge-danger", suspended:"badge-danger", overdue:"badge-danger"
+  };
+
+  function contextBar(container, opts){
+    opts = opts || {};
+    const u = U();
+    const id = "cb_" + Math.random().toString(36).slice(2,8);
+    const bar = document.createElement("div");
+    bar.className = "context-bar no-print";
+    bar.innerHTML = `
+      <span class="cb-item cb-clock" id="${id}_clock"></span>
+      ${opts.status ? `<span class="badge ${CB_STATUS_CLASS[String(opts.status).toLowerCase()]||'badge-neutral'}">${u.escapeHtml(opts.statusLabel||opts.status)}</span>` : ""}
+      ${opts.permission ? `<span class="badge badge-neutral">🔑 ${u.escapeHtml(opts.permission)}</span>` : ""}
+      ${opts.version ? `<span class="cb-item">v${u.escapeHtml(String(opts.version))}</span>` : ""}
+      ${opts.updatedAt ? `<span class="cb-item">Updated ${u.relativeTime(opts.updatedAt)}</span>` : ""}
+      ${opts.entity && opts.entityId ? `<button class="btn btn-sm btn-ghost" id="${id}_audit">🕒 Audit Trail</button>` : ""}
+    `;
+    const auditPanel = document.createElement("div");
+    auditPanel.className = "cb-audit hidden";
+    auditPanel.id = id + "_auditPanel";
+    (container||document.querySelector(".app-content")).prepend(auditPanel);
+    (container||document.querySelector(".app-content")).prepend(bar);
+
+    function tick(){
+      const now = new Date();
+      const el = document.getElementById(id+"_clock");
+      if(!el){ clearInterval(timer); return; }
+      el.textContent = "📅 " + now.toLocaleDateString(undefined,{weekday:"short",day:"2-digit",month:"short",year:"numeric"}) + " · " + now.toLocaleTimeString();
+    }
+    tick();
+    const timer = setInterval(tick, 1000);
+
+    if(opts.entity && opts.entityId){
+      document.getElementById(id+"_audit").addEventListener("click", ()=>{
+        const panel = document.getElementById(id+"_auditPanel");
+        if(panel.classList.contains("hidden")){
+          const logs = DB().auditFor(opts.entity, opts.entityId).slice(0,15);
+          panel.innerHTML = logs.length ? logs.map(l=>{
+            const usr = DB().users.get(l.userId);
+            return `<div class="cb-audit-row"><b>${u.escapeHtml(l.action)}</b> <span class="text-muted">by ${usr?u.escapeHtml(usr.name):"System"} · ${u.fmtDateTime(l.at)}</span></div>`;
+          }).join("") : `<div class="cb-audit-row text-muted">No audit history yet.</div>`;
+        }
+        panel.classList.toggle("hidden");
+      });
+    }
+    return bar;
+  }
+
   global.SW = global.SW || {};
-  global.SW.UI = { mountShell, helpSection, render403, ICONS, roleLabel };
+  global.SW.UI = { mountShell, helpSection, render403, contextBar, ICONS, roleLabel };
 })(window);

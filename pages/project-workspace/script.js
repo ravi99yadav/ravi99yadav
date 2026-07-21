@@ -38,6 +38,12 @@
   }
 
   document.getElementById("workspaceRoot").classList.remove("hidden");
+  SW.UI.contextBar(document.querySelector(".app-content"), {
+    entity:"projects", entityId:project.id,
+    status: project.status, statusLabel: (project.status||"").charAt(0).toUpperCase()+(project.status||"").slice(1),
+    permission: SW.UI.roleLabel(user.role) + (isPM ? " · Owner" : " · Contractor"),
+    version: project.version, updatedAt: project.updatedAt
+  });
   const otherUser = isPM ? DB.users.get(project.contractorId) : DB.users.get(project.pmId);
   const otherPartyName = project.external ? (project.externalContractorName||"External Contractor") : (otherUser ? otherUser.name : "—");
   // External projects have no linked contractor account, so the PM must be able to
