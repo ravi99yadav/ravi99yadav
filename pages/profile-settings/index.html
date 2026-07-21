@@ -59,6 +59,27 @@
         </div>
       </div>
 
+      <div class="grid mt-5" style="grid-template-columns:1fr 1fr;gap:20px">
+        <div class="card" id="signatureCard">
+          <h3>Digital Signature</h3>
+          <p class="text-muted" style="font-size:13px">Draw your signature below — it will be used to sign LOIs, Work Orders, RA Bills, Purchase Orders, EOT letters and other documents you generate or approve.</p>
+          <div style="border:1.5px solid var(--border-strong);border-radius:var(--r-md);background:#fff;touch-action:none">
+            <canvas id="sigPad" width="460" height="160" style="display:block;width:100%;height:160px;cursor:crosshair"></canvas>
+          </div>
+          <div class="flex gap-2 mt-3">
+            <button class="btn btn-outline btn-sm" id="sigClearBtn">Clear</button>
+            <button class="btn btn-primary btn-sm" id="sigSaveBtn">Save Signature</button>
+          </div>
+          <p class="text-muted mt-2" style="font-size:12px" id="sigStatus"></p>
+        </div>
+
+        <div class="card" id="teamCard">
+          <div class="flex justify-between items-center mb-2"><h3 style="margin:0">Team Members</h3><button class="btn btn-primary btn-sm" id="addTeamBtn">+ Add Team Member</button></div>
+          <p class="text-muted" style="font-size:13px">Add the people on your team so project assignments and site records can reference them.</p>
+          <div id="teamList"></div>
+        </div>
+      </div>
+
       <div class="card mt-5" style="max-width:520px">
         <h3>Change Password</h3>
         <div class="field"><label>Current Password</label><input class="input" type="password" id="pwCurrent"></div>
@@ -69,6 +90,28 @@
     </main>
   </div>
 </div>
+
+<div class="modal-overlay" id="teamModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="teamModalTitle">Add Team Member</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="tmId">
+      <div class="input-group">
+        <div class="field"><label>Name</label><input class="input" id="tmName"></div>
+        <div class="field"><label>Designation / Role</label><input class="input" id="tmDesignation" placeholder="e.g. Site Engineer, Foreman, Surveyor"></div>
+      </div>
+      <div class="field"><label>Skill / Trade</label><input class="input" id="tmSkill" placeholder="e.g. Civil, Electrical, Plumbing, MEP, Safety"></div>
+      <div class="input-group">
+        <div class="field"><label>Experience (years)</label><input class="input" type="number" id="tmExp"></div>
+        <div class="field"><label>Phone</label><input class="input" id="tmPhone"></div>
+      </div>
+      <div class="field"><label>Email (optional)</label><input class="input" id="tmEmail"></div>
+      <div class="field"><label>Notes (optional)</label><textarea class="textarea" id="tmNotes"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="tmSaveBtn">Save Team Member</button></div>
+  </div>
+</div>
+
 <script src="../../assets/js/core/db.js"></script>
 <script src="../../assets/js/core/auth.js"></script>
 <script src="../../assets/js/core/utils.js"></script>

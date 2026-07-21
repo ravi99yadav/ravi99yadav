@@ -1301,7 +1301,8 @@
     const net = b.currentGrossAmount - retention - b.advanceRecovery - tds + gst;
     const pm = DB.users.get(project.pmId);
     const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
-    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : ((DB.users.get(project.contractorId)||{}).name||"—");
+    const contractorUser = project.external ? null : DB.users.get(project.contractorId);
+    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : (contractorUser?.name||"—");
     const items = projectBoqItems();
     const billItems = DB.raBillItems.list(i=>i.raBillId===b.id);
     const itemRows = billItems.length ? billItems.map(bi=>{
@@ -1335,8 +1336,8 @@
       </table>
 
       <div class="signoff">
-        <div>${U.escapeHtml(contractorName)}<br>Contractor</div>
-        <div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div>
+        <div>${U.signatureImg(contractorUser)}${U.escapeHtml(contractorName)}<br>Contractor</div>
+        <div>${U.signatureImg(pm)}${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div>
       </div>
       <div class="footer"><span>Generated via SubletWorks.com</span><span>Bill Status: ${b.status}</span></div>`;
     SW.UI.printDocument(b.billNo, body);
@@ -1528,7 +1529,7 @@
       <table><thead><tr><th>Description</th><th>Unit</th><th>Qty</th><th>Rate</th><th>Amount</th></tr></thead><tbody>${rows}</tbody>
       <tfoot><tr><td colspan="4" style="text-align:right"><b>Total</b></td><td><b>${U.fmtINR(poTotal(po))}</b></td></tr></tfoot></table>
       ${po.paymentTerms?`<p style="font-size:13px"><b>Payment Terms:</b> ${U.escapeHtml(po.paymentTerms)}</p>`:""}
-      <div class="signoff"><div>Vendor Acknowledgement</div><div>${pmUser?U.escapeHtml(pmUser.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+      <div class="signoff"><div>Vendor Acknowledgement</div><div>${U.signatureImg(pmUser)}${pmUser?U.escapeHtml(pmUser.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
       <div class="footer"><span>Generated via SubletWorks.com</span><span>Status: ${po.status}</span></div>`;
     SW.UI.printDocument(`${U.escapeHtml(po.poNo)} — Purchase Order`, body);
   }
@@ -2123,7 +2124,8 @@
   function printEOTRequestLetter(r){
     const pm = DB.users.get(project.pmId);
     const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
-    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : ((DB.users.get(project.contractorId)||{}).name||"—");
+    const contractorUser = project.external ? null : DB.users.get(project.contractorId);
+    const contractorName = project.external ? (project.externalContractorName||"External Contractor") : (contractorUser?.name||"—");
     const periodRows = (r.mergedRanges||[]).map(m=>`
       <tr><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td>${U.daysBetween(m.from,m.to)+1}</td>
       <td>${m.items.map(h=>`<b>[${U.escapeHtml(h.category||"—")}] ${U.escapeHtml(h.type)}:</b> ${U.escapeHtml(h.description)}`).join("<br><br>")}</td></tr>`).join("");
@@ -2146,7 +2148,7 @@
       ${r.pmComment ? `<h4>Project Manager Remarks</h4><p>${U.escapeHtml(r.pmComment)}</p>` : ""}
       <h4>Declaration</h4>
       <p style="font-size:12px">The Contractor declares that the above delay events and periods are true and correct to the best of its knowledge, and supporting evidence is available on request.</p>
-      <div class="signoff"><div>${U.escapeHtml(contractorName)}<br>Contractor</div><div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+      <div class="signoff"><div>${U.signatureImg(contractorUser)}${U.escapeHtml(contractorName)}<br>Contractor</div><div>${U.signatureImg(pm)}${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
       <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1}</span></div>`;
     SW.UI.printDocument(`${U.escapeHtml(r.requestNo)} — EOT Letter — ${U.escapeHtml(project.name)}`, body);
   }

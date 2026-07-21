@@ -56,9 +56,9 @@
         <p>${U.escapeHtml(loi.additionalTerms || "This LOI confirms our intent to award the above work to you subject to execution of a formal Work Order. Please acknowledge acceptance within 3 working days.")}</p>
       </div>
       <div class="doc-signoff">
-        <div><div class="sig-line">${U.escapeHtml(pm.name)}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+        <div>${U.signatureImg(pm)}<div class="sig-line">${U.escapeHtml(pm.name)}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
         <div><div class="doc-qr" title="Scan to verify on SubletWorks.com"></div><div style="font-size:10px;margin-top:4px">Scan to verify</div></div>
-        <div><div class="sig-line">${U.escapeHtml(contractor.name)}<br>Contractor Acceptance</div></div>
+        <div>${U.signatureImg(contractor)}<div class="sig-line">${U.escapeHtml(contractor.name)}<br>Contractor Acceptance</div></div>
       </div>
       <div class="doc-footer"><span>Generated via SubletWorks.com</span><span>Revision ${loi.version||1}</span><span>Page 1 of 1</span></div>`;
   }

@@ -62,6 +62,94 @@
     });
   }
 
+  /* ---------- Digital Signature ---------- */
+  (function initSignaturePad(){
+    const canvas = document.getElementById("sigPad");
+    const ctx = canvas.getContext("2d");
+    let drawing = false, hasDrawn = false;
+    ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.strokeStyle = "#111";
+
+    function pos(e){
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width, scaleY = canvas.height / rect.height;
+      const point = e.touches ? e.touches[0] : e;
+      return { x: (point.clientX-rect.left)*scaleX, y: (point.clientY-rect.top)*scaleY };
+    }
+    function start(e){ drawing = true; hasDrawn = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
+    function move(e){ if(!drawing) return; const p = pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
+    function end(){ drawing = false; }
+    canvas.addEventListener("mousedown", start); canvas.addEventListener("mousemove", move); window.addEventListener("mouseup", end);
+    canvas.addEventListener("touchstart", start); canvas.addEventListener("touchmove", move); canvas.addEventListener("touchend", end);
+
+    if(user.signature){
+      const img = new Image();
+      img.onload = ()=> ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      img.src = user.signature;
+      hasDrawn = true;
+      document.getElementById("sigStatus").textContent = "Signature saved.";
+    }
+    document.getElementById("sigClearBtn").addEventListener("click", ()=>{
+      ctx.clearRect(0,0,canvas.width,canvas.height); hasDrawn = false;
+      document.getElementById("sigStatus").textContent = "";
+    });
+    document.getElementById("sigSaveBtn").addEventListener("click", ()=>{
+      if(!hasDrawn){ U.toast("Draw your signature first.", {type:"danger"}); return; }
+      const dataUrl = canvas.toDataURL("image/png");
+      DB.users.update(user.id, { signature: dataUrl });
+      document.getElementById("sigStatus").textContent = "Signature saved — it will now appear on documents you sign.";
+      U.toast("Signature saved.", {type:"success"});
+    });
+  })();
+
+  /* ---------- Team Members ---------- */
+  function renderTeam(){
+    const list = DB.teamMembers.list(t=>t.ownerId===user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    document.getElementById("teamList").innerHTML = list.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Designation</th><th>Skill / Trade</th><th>Exp.</th><th>Phone</th><th></th></tr></thead>
+      <tbody>${list.map(t=>`<tr>
+        <td>${U.escapeHtml(t.name)}</td><td>${U.escapeHtml(t.designation||"—")}</td><td>${U.escapeHtml(t.skill||"—")}</td>
+        <td>${t.experienceYears?t.experienceYears+" yrs":"—"}</td><td>${U.escapeHtml(t.phone||"—")}</td>
+        <td class="flex gap-2"><button class="btn-icon" data-edit-team="${t.id}" title="Edit">✎</button><button class="btn-icon" data-rm-team="${t.id}" title="Remove">✕</button></td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">👥</div>No team members added yet.</div>`;
+    document.getElementById("teamList").querySelectorAll("[data-edit-team]").forEach(b=> b.addEventListener("click", ()=> openTeamModal(b.dataset.editTeam)));
+    document.getElementById("teamList").querySelectorAll("[data-rm-team]").forEach(b=> b.addEventListener("click", ()=>{
+      if(!confirm("Remove this team member?")) return;
+      DB.teamMembers.remove(b.dataset.rmTeam); renderTeam();
+    }));
+  }
+  function openTeamModal(id){
+    const tm = id ? DB.teamMembers.get(id) : null;
+    document.getElementById("teamModalTitle").textContent = tm ? "Edit Team Member" : "Add Team Member";
+    document.getElementById("tmId").value = tm ? tm.id : "";
+    document.getElementById("tmName").value = tm ? tm.name : "";
+    document.getElementById("tmDesignation").value = tm ? tm.designation||"" : "";
+    document.getElementById("tmSkill").value = tm ? tm.skill||"" : "";
+    document.getElementById("tmExp").value = tm ? tm.experienceYears||"" : "";
+    document.getElementById("tmPhone").value = tm ? tm.phone||"" : "";
+    document.getElementById("tmEmail").value = tm ? tm.email||"" : "";
+    document.getElementById("tmNotes").value = tm ? tm.notes||"" : "";
+    U.openModal("teamModal");
+  }
+  document.getElementById("addTeamBtn").addEventListener("click", ()=> openTeamModal(null));
+  document.getElementById("tmSaveBtn").addEventListener("click", ()=>{
+    const name = document.getElementById("tmName").value.trim();
+    if(!name){ U.toast("Enter the team member's name.", {type:"danger"}); return; }
+    const data = {
+      name, designation: document.getElementById("tmDesignation").value.trim(),
+      skill: document.getElementById("tmSkill").value.trim(),
+      experienceYears: +document.getElementById("tmExp").value||0,
+      phone: document.getElementById("tmPhone").value.trim(),
+      email: document.getElementById("tmEmail").value.trim(),
+      notes: document.getElementById("tmNotes").value.trim()
+    };
+    const id = document.getElementById("tmId").value;
+    if(id) DB.teamMembers.update(id, data);
+    else DB.teamMembers.create(Object.assign({ ownerId:user.id }, data));
+    U.closeModal("teamModal"); renderTeam();
+    U.toast(id?"Team member updated.":"Team member added.", {type:"success"});
+  });
+  renderTeam();
+  if(isAdmin){ document.getElementById("teamCard").classList.add("hidden"); document.getElementById("signatureCard").classList.add("hidden"); }
+
   document.getElementById("changePasswordBtn").addEventListener("click", ()=>{
     const cur = document.getElementById("pwCurrent").value;
     const next = document.getElementById("pwNew").value;
@@ -77,6 +165,8 @@
   SW.UI.helpSection(document.querySelector(".app-content"), "Profile & Settings", [
     "Personal details and company information (GST, PAN, MSME, ISO, trades, equipment) shown to other users when you bid or list contractor profiles.",
     "Contractors: keeping trades, experience and equipment up to date improves how well tender matches and search results find you.",
-    "Change your password here anytime — you'll need your current password to confirm the change."
+    "Change your password here anytime — you'll need your current password to confirm the change.",
+    "Digital Signature: draw your signature once and it's used automatically on every document you sign or generate — LOI, Work Order, RA Bill, Purchase Order, EOT Letter and more.",
+    "Team Members: add the people on your team with their designation, skill/trade and experience — useful for project assignment and site records."
   ]);
 })();

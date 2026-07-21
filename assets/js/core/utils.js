@@ -213,6 +213,12 @@
     setTimeout(()=>URL.revokeObjectURL(url), 1000);
   }
 
+  // Renders a saved digital signature image above a signoff line, or just
+  // leaves the blank line if the user hasn't drawn one yet.
+  function signatureImg(userObj){
+    return userObj && userObj.signature ? `<img src="${userObj.signature}" style="max-height:44px;max-width:160px;display:block;margin:0 auto 4px;">` : "";
+  }
+
   function escapeHtml(s){
     return String(s==null?"":s).replace(/[&<>"']/g, c=>({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
   }
@@ -271,6 +277,6 @@
   global.SW.Utils = {
     startClock, fmtDate, fmtDateTime, fmtINR, daysBetween, relativeTime, projectHealth,
     Validate, validateForm, toast, confetti, openModal, closeModal, bindModalDismiss,
-    bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, debounce, qs, qsa, initTabs, animateCounter, DAY_NAMES
+    bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, signatureImg, debounce, qs, qsa, initTabs, animateCounter, DAY_NAMES
   };
 })(window);

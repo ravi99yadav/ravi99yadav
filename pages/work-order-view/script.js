@@ -50,9 +50,9 @@
       <div class="doc-section" ${isPM?'contenteditable="true" class="editable-region"':""} id="safetyBlock"><h4>Safety Requirements</h4><p>${U.escapeHtml(wo.safety||"—")}</p></div>
       <div class="doc-section" ${isPM?'contenteditable="true" class="editable-region"':""} id="insuranceBlock"><h4>Insurance</h4><p>${U.escapeHtml(wo.insurance||"—")}</p></div>
       <div class="doc-signoff">
-        <div><div class="sig-line">${U.escapeHtml(pm.name)}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+        <div>${U.signatureImg(pm)}<div class="sig-line">${U.escapeHtml(pm.name)}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
         <div><div class="doc-qr" title="Scan to verify on SubletWorks.com"></div><div style="font-size:10px;margin-top:4px">Scan to verify</div></div>
-        <div><div class="sig-line">${U.escapeHtml(contractor.name)}<br>Contractor</div></div>
+        <div>${U.signatureImg(contractor)}<div class="sig-line">${U.escapeHtml(contractor.name)}<br>Contractor</div></div>
       </div>
       <div class="doc-footer"><span>Generated via SubletWorks.com</span><span>Revision ${wo.version||1}</span><span>Page 1 of 1</span></div>`;
   }
