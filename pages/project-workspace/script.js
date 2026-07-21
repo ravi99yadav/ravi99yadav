@@ -497,7 +497,25 @@
       labour:[{trade:"Electrician", perUnit:0.5}] },
     { name:"Plumbing (per point)", unit:"Point",
       material:[{item:"GI/CPVC Pipe", perUnit:3, unit:"m"},{item:"Fittings", perUnit:2, unit:"Nos"}],
-      labour:[{trade:"Plumber", perUnit:0.4}] }
+      labour:[{trade:"Plumber", perUnit:0.4}] },
+    { name:"Structural steel fabrication & erection", unit:"MT",
+      material:[{item:"Welding Electrode", perUnit:5, unit:"Kg"},{item:"Primer Paint", perUnit:2, unit:"Litre"}],
+      labour:[{trade:"Fitter", perUnit:1.5},{trade:"Welder", perUnit:1.0},{trade:"Helper", perUnit:1.0}] },
+    { name:"Road / WBM (Water Bound Macadam)", unit:"Cum",
+      material:[{item:"Screening", perUnit:0.15, unit:"Cum"}],
+      labour:[{trade:"Mazdoor", perUnit:0.5},{trade:"Roller Operator", perUnit:0.05}] },
+    { name:"Aluminium glazing / windows", unit:"Sqm",
+      material:[{item:"Aluminium Section", perUnit:3.0, unit:"Kg"},{item:"Glass", perUnit:1.05, unit:"Sqm"},{item:"Sealant", perUnit:0.1, unit:"Kg"}],
+      labour:[{trade:"Glazier", perUnit:0.3},{trade:"Helper", perUnit:0.3}] },
+    { name:"HVAC ducting (GI sheet metal)", unit:"Sqm",
+      material:[{item:"GI Sheet", perUnit:1.1, unit:"Sqm"},{item:"Duct Insulation", perUnit:1.0, unit:"Sqm"}],
+      labour:[{trade:"Ducting Fitter", perUnit:0.4},{trade:"Helper", perUnit:0.4}] },
+    { name:"Fire fighting piping", unit:"Rmt",
+      material:[{item:"MS Pipe", perUnit:1.0, unit:"Rmt"},{item:"Fittings", perUnit:0.2, unit:"Nos"}],
+      labour:[{trade:"Fire Fitter", perUnit:0.15},{trade:"Helper", perUnit:0.15}] },
+    { name:"Landscaping / horticulture", unit:"Sqm",
+      material:[{item:"Topsoil", perUnit:0.1, unit:"Cum"},{item:"Manure", perUnit:2, unit:"Kg"},{item:"Plants", perUnit:0.5, unit:"Nos"}],
+      labour:[{trade:"Gardener", perUnit:0.1},{trade:"Mazdoor", perUnit:0.1}] }
   ];
 
   function wpRowsHtml(rows, cols){
