@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spreadsheets — SubletWorks.com</title>
+<meta name="description" content="Excel-like spreadsheets with formulas, formatting, multiple sheets, print and CSV — built for construction estimates, BOQs and rate analysis.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+        <div><h1 style="margin:0">Spreadsheets</h1><p class="text-muted" style="margin:2px 0 0">Excel-style workbooks with live formulas — estimates, BOQ, rate analysis, abstracts and more.</p></div>
+        <div class="flex gap-2">
+          <select class="select" id="docSelect" style="min-width:200px"></select>
+          <button class="btn btn-outline btn-sm" id="renameDocBtn" title="Rename workbook">✎</button>
+          <button class="btn btn-outline btn-sm" id="deleteDocBtn" title="Delete workbook">🗑</button>
+          <button class="btn btn-primary btn-sm" id="newDocBtn">+ New Workbook</button>
+        </div>
+      </div>
+
+      <div id="emptyState" class="card hidden"><div class="empty-state"><div class="es-icon">📊</div>No workbooks yet.<br><button class="btn btn-primary btn-sm mt-3" id="createFirstBtn">Create your first workbook</button></div></div>
+
+      <div id="editorWrap">
+        <!-- Toolbar -->
+        <div class="ss-toolbar card no-print">
+          <div class="ss-tb-group">
+            <button class="ss-btn" data-cmd="bold" title="Bold (Ctrl+B)"><b>B</b></button>
+            <button class="ss-btn" data-cmd="italic" title="Italic (Ctrl+I)"><i>I</i></button>
+          </div>
+          <div class="ss-tb-group">
+            <button class="ss-btn" data-cmd="align-left" title="Align left">⯇</button>
+            <button class="ss-btn" data-cmd="align-center" title="Align center">≡</button>
+            <button class="ss-btn" data-cmd="align-right" title="Align right">⯈</button>
+          </div>
+          <div class="ss-tb-group">
+            <select class="select select-sm" id="fmtSelect" title="Number format">
+              <option value="general">General</option>
+              <option value="number">Number (0.00)</option>
+              <option value="integer">Integer (0)</option>
+              <option value="currency">Currency (₹)</option>
+              <option value="percent">Percent (%)</option>
+              <option value="text">Text</option>
+            </select>
+          </div>
+          <div class="ss-tb-group">
+            <label class="ss-color" title="Text color">A<input type="color" id="textColor" value="#111111"></label>
+            <label class="ss-color ss-fill" title="Fill color">▮<input type="color" id="fillColor" value="#ffffff"></label>
+            <button class="ss-btn" data-cmd="clear-fmt" title="Clear formatting">⌫fmt</button>
+          </div>
+          <div class="ss-tb-group">
+            <button class="ss-btn" data-cmd="add-row" title="Add row">+Row</button>
+            <button class="ss-btn" data-cmd="add-col" title="Add column">+Col</button>
+          </div>
+          <div class="ss-tb-group ss-tb-right">
+            <button class="ss-btn" id="importCsvBtn" title="Import CSV / paste">⬆ Import</button>
+            <button class="ss-btn" id="exportCsvBtn" title="Export active sheet to CSV">⬇ CSV</button>
+            <button class="ss-btn" id="printBtn" title="Print active sheet">🖨 Print</button>
+            <span class="ss-saved" id="savedTag">Saved</span>
+          </div>
+        </div>
+
+        <!-- Formula bar -->
+        <div class="ss-formula-bar no-print">
+          <span class="ss-cellref" id="cellRef">A1</span>
+          <span class="ss-fx">fx</span>
+          <input type="text" id="formulaInput" placeholder="Enter a value or a formula, e.g. =SUM(A1:A10)*1.18">
+        </div>
+
+        <!-- Grid -->
+        <div class="ss-grid-wrap" id="gridWrap"></div>
+
+        <!-- Sheet tabs -->
+        <div class="ss-sheet-tabs no-print" id="sheetTabs"></div>
+      </div>
+
+      <div class="card mt-4 no-print" id="fnHelp">
+        <details>
+          <summary style="cursor:pointer;font-weight:700">❔ Supported formulas &amp; tips</summary>
+          <div class="mt-3" style="font-size:13px;line-height:1.7">
+            <p><b>Start a formula with <code>=</code>.</b> Reference cells like <code>A1</code>, ranges like <code>A1:A10</code>. Operators: <code>+ - * / ^</code> and <code>%</code> (e.g. <code>=A1*18%</code>).</p>
+            <p><b>Functions:</b> SUM, AVERAGE, MIN, MAX, COUNT, COUNTA, PRODUCT, ROUND, ROUNDUP, ROUNDDOWN, INT, ABS, SQRT, POWER, MOD, IF, AND, OR, NOT, LEN, CONCAT.</p>
+            <p class="text-muted">Examples: <code>=SUM(B2:B20)</code> · <code>=A1*C1</code> · <code>=ROUND(D5*1.18, 2)</code> · <code>=IF(E2&gt;100000, "High", "Normal")</code> · <code>=AVERAGE(F2:F10)</code></p>
+            <p class="text-muted">Paste from Excel/Google Sheets with <b>Import</b> or straight onto a cell. Each workbook can hold multiple sheets. Everything is saved to your account automatically.</p>
+          </div>
+        </details>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="importModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Import / Paste Data</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <p class="text-muted" style="font-size:13px">Paste tab- or comma-separated rows (copied from Excel / Google Sheets). Data fills from the currently selected cell.</p>
+      <textarea class="textarea" id="importText" rows="10" placeholder="Item&#9;Qty&#9;Rate&#10;Cement&#9;100&#9;350&#10;Steel&#9;5&#9;62000"></textarea>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="importDoBtn">Import into sheet</button></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="formula.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
