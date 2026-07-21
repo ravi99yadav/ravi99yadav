@@ -102,19 +102,37 @@
   })();
 
   /* ---------- Team Members ---------- */
+  // Projects this owner is a party to (PM or contractor) — a member can be allotted to any of them.
+  function myProjects(){
+    return DB.projects.list(p=> p.pmId===user.id || p.contractorId===user.id)
+      .sort((a,b)=> new Date(b.createdAt)-new Date(a.createdAt));
+  }
+  function projectName(id){ const p = DB.projects.get(id); return p ? p.name : null; }
+
   function renderTeam(){
     const list = DB.teamMembers.list(t=>t.ownerId===user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
-    document.getElementById("teamList").innerHTML = list.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Designation</th><th>Skill / Trade</th><th>Exp.</th><th>Phone</th><th></th></tr></thead>
-      <tbody>${list.map(t=>`<tr>
+    document.getElementById("teamList").innerHTML = list.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Designation</th><th>Skill / Trade</th><th>Exp.</th><th>Rate/day</th><th>Projects</th><th></th></tr></thead>
+      <tbody>${list.map(t=>{
+        const names = (t.projectIds||[]).map(projectName).filter(Boolean);
+        const projCell = names.length ? `<span title="${U.escapeHtml(names.join(", "))}">${names.length} project${names.length>1?"s":""}</span>` : "—";
+        return `<tr>
         <td>${U.escapeHtml(t.name)}</td><td>${U.escapeHtml(t.designation||"—")}</td><td>${U.escapeHtml(t.skill||"—")}</td>
-        <td>${t.experienceYears?t.experienceYears+" yrs":"—"}</td><td>${U.escapeHtml(t.phone||"—")}</td>
+        <td>${t.experienceYears?t.experienceYears+" yrs":"—"}</td><td>${t.dailyRate?U.fmtINR(t.dailyRate):"—"}</td><td>${projCell}</td>
         <td class="flex gap-2"><button class="btn-icon" data-edit-team="${t.id}" title="Edit">✎</button><button class="btn-icon" data-rm-team="${t.id}" title="Remove">✕</button></td>
-      </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">👥</div>No team members added yet.</div>`;
+      </tr>`;}).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">👥</div>No team members added yet.</div>`;
     document.getElementById("teamList").querySelectorAll("[data-edit-team]").forEach(b=> b.addEventListener("click", ()=> openTeamModal(b.dataset.editTeam)));
     document.getElementById("teamList").querySelectorAll("[data-rm-team]").forEach(b=> b.addEventListener("click", ()=>{
       if(!confirm("Remove this team member?")) return;
       DB.teamMembers.remove(b.dataset.rmTeam); renderTeam();
     }));
+  }
+  function renderProjectChecks(selectedIds){
+    selectedIds = selectedIds || [];
+    const projects = myProjects();
+    const box = document.getElementById("tmProjects");
+    box.innerHTML = projects.length ? projects.map(p=>`
+      <label><input type="checkbox" data-project="${p.id}" ${selectedIds.includes(p.id)?"checked":""}> ${U.escapeHtml(p.name)}</label>`).join("")
+      : `<div class="cg-empty">No projects yet — once you have running projects they'll appear here to allot team members to.</div>`;
   }
   function openTeamModal(id){
     const tm = id ? DB.teamMembers.get(id) : null;
@@ -125,8 +143,10 @@
     document.getElementById("tmSkill").value = tm ? tm.skill||"" : "";
     document.getElementById("tmExp").value = tm ? tm.experienceYears||"" : "";
     document.getElementById("tmPhone").value = tm ? tm.phone||"" : "";
+    document.getElementById("tmRate").value = tm ? tm.dailyRate||"" : "";
     document.getElementById("tmEmail").value = tm ? tm.email||"" : "";
     document.getElementById("tmNotes").value = tm ? tm.notes||"" : "";
+    renderProjectChecks(tm ? tm.projectIds||[] : []);
     U.openModal("teamModal");
   }
   document.getElementById("addTeamBtn").addEventListener("click", ()=> openTeamModal(null));
@@ -138,8 +158,10 @@
       skill: document.getElementById("tmSkill").value.trim(),
       experienceYears: +document.getElementById("tmExp").value||0,
       phone: document.getElementById("tmPhone").value.trim(),
+      dailyRate: +document.getElementById("tmRate").value||0,
       email: document.getElementById("tmEmail").value.trim(),
-      notes: document.getElementById("tmNotes").value.trim()
+      notes: document.getElementById("tmNotes").value.trim(),
+      projectIds: U.qsa("#tmProjects [data-project]:checked").map(c=>c.dataset.project)
     };
     const id = document.getElementById("tmId").value;
     if(id) DB.teamMembers.update(id, data);
@@ -167,6 +189,6 @@
     "Contractors: keeping trades, experience and equipment up to date improves how well tender matches and search results find you.",
     "Change your password here anytime — you'll need your current password to confirm the change.",
     "Digital Signature: draw your signature once and it's used automatically on every document you sign or generate — LOI, Work Order, RA Bill, Purchase Order, EOT Letter and more.",
-    "Team Members: add the people on your team with their designation, skill/trade and experience — useful for project assignment and site records."
+    "Team Members: add the people on your team with their designation, skill/trade, experience and daily wage rate. Allot each member to one or more projects — then mark their daily attendance from each project's Attendance tab, where wages are auto-calculated from the rate."
   ]);
 })();

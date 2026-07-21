@@ -1827,6 +1827,98 @@
     });
   }
 
+  /* ================= ATTENDANCE & WAGES ================= */
+  // Each party (PM or contractor) tracks attendance only for their OWN team members
+  // who have been allotted to this project from Profile & Settings.
+  let attSelectedDate = new Date().toISOString().slice(0,10);
+  const ATT_STATUS = [
+    { v:"present", label:"Present", factor:1 },
+    { v:"half", label:"Half Day", factor:0.5 },
+    { v:"overtime", label:"Present + OT", factor:1.5 },
+    { v:"absent", label:"Absent", factor:0 }
+  ];
+  function attFactor(v){ const s=ATT_STATUS.find(x=>x.v===v); return s?s.factor:0; }
+  function attMembers(){
+    return DB.teamMembers.list(t=>t.ownerId===user.id && (t.projectIds||[]).includes(project.id))
+      .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
+  }
+  function renderAttendance(){
+    const panel = document.getElementById("panelAttendance");
+    const members = attMembers();
+    if(!members.length){
+      panel.innerHTML = `<h3>Attendance &amp; Wages</h3>
+        <div class="empty-state"><div class="es-icon">🧑‍🏭</div>No team members are allotted to this project yet.
+        <br><a class="btn btn-outline btn-sm mt-3" href="../profile-settings/index.html">Manage team &amp; allot to projects</a></div>
+        <p class="text-muted" style="font-size:12.5px;max-width:560px;margin:12px auto 0;text-align:center">Add team members in Profile &amp; Settings and tick this project under "Allot to Projects", then mark daily attendance here — wages are auto-calculated from each member's daily rate.</p>`;
+      return;
+    }
+    const records = DB.teamAttendance.list(a=>a.ownerId===user.id && a.projectId===project.id);
+    const forDate = {};
+    records.filter(r=>r.date===attSelectedDate).forEach(r=> forDate[r.memberId]=r);
+    const marking = members.map(m=>{
+      const cur = forDate[m.id] ? forDate[m.id].status : "present";
+      return `<tr><td>${U.escapeHtml(m.name)}</td><td class="text-muted">${U.escapeHtml(m.designation||m.skill||"—")}</td>
+        <td>${m.dailyRate?U.fmtINR(m.dailyRate):'<span class="text-muted">no rate set</span>'}</td>
+        <td><select class="select att-status" data-member="${m.id}" style="min-width:150px">${ATT_STATUS.map(s=>`<option value="${s.v}" ${s.v===cur?"selected":""}>${s.label}</option>`).join("")}</select></td></tr>`;
+    }).join("");
+    const summary = members.map(m=>{
+      const recs = records.filter(r=>r.memberId===m.id);
+      const present = recs.filter(r=>r.status==="present").length;
+      const half = recs.filter(r=>r.status==="half").length;
+      const ot = recs.filter(r=>r.status==="overtime").length;
+      const absent = recs.filter(r=>r.status==="absent").length;
+      const manDays = recs.reduce((s,r)=>s+attFactor(r.status),0);
+      const wage = manDays * (m.dailyRate||0);
+      return { m, present, half, ot, absent, manDays, wage };
+    });
+    const totalWage = summary.reduce((s,x)=>s+x.wage,0);
+    const totalManDays = summary.reduce((s,x)=>s+x.manDays,0);
+    panel.innerHTML = `
+      <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px"><h3 style="margin:0">Attendance &amp; Wages</h3>
+        <div class="flex gap-2"><button class="btn btn-outline btn-sm" id="attCsvBtn">⬇ Export CSV</button><button class="btn btn-outline btn-sm" id="attPrintBtn">🖨 Print Muster</button></div></div>
+      <div class="card mb-4">
+        <div class="flex items-end gap-3 mb-3" style="flex-wrap:wrap">
+          <div class="field" style="margin:0"><label>Attendance Date</label><input class="input" type="date" id="attDate" value="${attSelectedDate}" style="max-width:190px"></div>
+          <button class="btn btn-primary btn-sm" id="attSaveBtn">Save Attendance for this Date</button>
+        </div>
+        <div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Role</th><th>Rate/day</th><th>Status</th></tr></thead><tbody>${marking}</tbody></table></div>
+      </div>
+      <h4 class="mb-2">Wage Summary <span class="text-muted" style="font-weight:400;font-size:13px">(across all recorded dates)</span></h4>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Present</th><th>Half</th><th>OT</th><th>Absent</th><th>Man-days</th><th>Rate/day</th><th>Wage Payable</th></tr></thead>
+        <tbody>${summary.map(x=>`<tr><td>${U.escapeHtml(x.m.name)}</td><td>${x.present}</td><td>${x.half}</td><td>${x.ot}</td><td>${x.absent}</td><td>${x.manDays}</td><td>${x.m.dailyRate?U.fmtINR(x.m.dailyRate):"—"}</td><td><b>${U.fmtINR(x.wage)}</b></td></tr>`).join("")}
+        <tr style="font-weight:700;background:var(--surface-2)"><td colspan="5">Total</td><td>${totalManDays}</td><td></td><td>${U.fmtINR(totalWage)}</td></tr></tbody></table></div>
+      <p class="text-muted mt-2" style="font-size:12px">Man-days: Present = 1 · Half Day = 0.5 · Present + OT = 1.5 · Absent = 0. Wage = man-days × daily rate.</p>`;
+
+    document.getElementById("attDate").addEventListener("change", e=>{ attSelectedDate = e.target.value; renderAttendance(); });
+    document.getElementById("attSaveBtn").addEventListener("click", ()=>{
+      U.qsa("#panelAttendance .att-status").forEach(sel=>{
+        const memberId = sel.dataset.member, status = sel.value;
+        const existing = DB.teamAttendance.list(a=>a.ownerId===user.id && a.projectId===project.id && a.memberId===memberId && a.date===attSelectedDate)[0];
+        if(existing) DB.teamAttendance.update(existing.id, {status});
+        else DB.teamAttendance.create({ ownerId:user.id, projectId:project.id, memberId, date:attSelectedDate, status });
+      });
+      renderAttendance();
+      U.toast("Attendance saved for "+U.fmtDate(attSelectedDate)+".", {type:"success"});
+    });
+    document.getElementById("attCsvBtn").addEventListener("click", ()=>{
+      U.exportCSV(`attendance-${project.name}`,
+        ["Name","Role","Present","Half","OT","Absent","Man-days","Rate/day","Wage Payable"],
+        summary.map(x=>[x.m.name, x.m.designation||x.m.skill||"", x.present, x.half, x.ot, x.absent, x.manDays, x.m.dailyRate||0, x.wage]));
+    });
+    document.getElementById("attPrintBtn").addEventListener("click", ()=> printMuster(summary, totalManDays, totalWage));
+  }
+  function printMuster(summary, totalManDays, totalWage){
+    const rows = summary.map(x=>`<tr><td>${U.escapeHtml(x.m.name)}</td><td>${U.escapeHtml(x.m.designation||x.m.skill||"—")}</td><td>${x.present}</td><td>${x.half}</td><td>${x.ot}</td><td>${x.absent}</td><td>${x.manDays}</td><td>${U.fmtINR(x.m.dailyRate||0)}</td><td>${U.fmtINR(x.wage)}</td></tr>`).join("");
+    const body = `
+      <div class="title">Muster Roll &amp; Wage Sheet</div>
+      <p style="font-size:13px"><b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Location:</b> ${U.escapeHtml(project.district||"")}, ${U.escapeHtml(project.state||"")}</p>
+      <table><thead><tr><th>Name</th><th>Role</th><th>Present</th><th>Half</th><th>OT</th><th>Absent</th><th>Man-days</th><th>Rate/day</th><th>Wage Payable</th></tr></thead>
+      <tbody>${rows}<tr style="font-weight:700"><td colspan="6">Total</td><td>${totalManDays}</td><td></td><td>${U.fmtINR(totalWage)}</td></tr></tbody></table>
+      <div class="signoff"><div>Prepared By</div><div>Verified By</div></div>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>`;
+    SW.UI.printDocument(`Muster Roll — ${U.escapeHtml(project.name)}`, body, {landscape:true});
+  }
+
   /* ================= HINDRANCE ================= */
   function hindranceLibrary(){ return DB.hindranceLibrary.list().sort((a,b)=>(a.category||"").localeCompare(b.category)||(a.title||"").localeCompare(b.title)); }
   function computeEOT(hindrances){
@@ -2185,12 +2277,15 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderWBS(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderWBS(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderAttendance(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
   document.querySelector('#wsTabs [data-tab="vehicle"]').addEventListener("click", renderVehicle);
   document.querySelector('#wsTabs [data-tab="grn"]').addEventListener("click", renderGRN);
+  // Attendance depends on team-member allotments managed in Profile & Settings, so
+  // re-render on tab open to reflect any allotment/rate changes made since page load.
+  document.querySelector('#wsTabs [data-tab="attendance"]').addEventListener("click", renderAttendance);
   const requestedTab = params.get("tab");
   if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
@@ -2204,6 +2299,7 @@
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",
     "DPR: log daily labour, equipment, weather and work done — useful for dispute resolution and progress tracking.",
+    "Attendance: for team members you've allotted to this project (from Profile & Settings), pick a date and mark each person Present / Half Day / Present + OT / Absent. The Wage Summary tallies man-days and auto-calculates wages payable from each member's daily rate across every recorded date — export it as CSV or print a Muster Roll & Wage Sheet. Each party (PM and contractor) tracks only their own crew.",
     "Hindrance: report blockers by picking a category and type from the admin-managed Hindrance Library (or \"Custom / Other\" to specify your own) — the library auto-fills typical root cause, impact, evidence required and responsible party.",
     "EOT Requests: once one or more hindrances have a delay period set, raise a formal EOT Request by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft to keep editing, or Submit for Approval. The Project Manager can Approve (which updates the project's completion date), Return for Revision with a comment, or Reject. Every request can be printed as a professional EOT letter with full chronology and revision history.",
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
