@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Contractors — SubletWorks.com</title>
+<meta name="description" content="Find verified contractors by area, trade, rating, equipment and labour strength.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <h1>Search Contractors</h1>
+      <p class="text-muted mb-5">Find contractors by area, trade, rating, equipment &amp; labour strength — invite them straight to a tender.</p>
+
+      <div class="card mb-5">
+        <div class="grid grid-4" id="filterGrid">
+          <div class="field"><label>District / Area</label><input class="input" id="fDistrict" placeholder="e.g. Gurugram"></div>
+          <div class="field"><label>State</label><input class="input" id="fState" placeholder="e.g. Haryana"></div>
+          <div class="field"><label>Trade / Work Type</label>
+            <select class="select" id="fTrade"><option value="">All Trades</option><option>Civil</option><option>Structural</option><option>Electrical</option><option>MEP</option><option>Plumbing</option><option>Fire Fighting</option></select>
+          </div>
+          <div class="field"><label>Search Radius (km) <span class="badge badge-neutral">map search</span></label>
+            <input type="range" id="fRadius" min="5" max="200" value="50" style="width:100%">
+            <div class="hint" id="radiusVal">50 km around entered district</div>
+          </div>
+          <div class="field"><label>Minimum Rating</label>
+            <select class="select" id="fRating"><option value="0">Any</option><option value="3">3+</option><option value="4">4+</option><option value="4.5">4.5+</option></select>
+          </div>
+          <div class="field"><label>Minimum Experience (yrs)</label><input class="input" type="number" id="fExp" placeholder="e.g. 5"></div>
+          <div class="field"><label>Minimum Labour Strength</label><input class="input" type="number" id="fLabour" placeholder="e.g. 20"></div>
+          <div class="field"><label>Equipment</label><input class="input" id="fEquip" placeholder="e.g. JCB, Tower Crane"></div>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn btn-primary" id="searchBtn">Search Contractors</button>
+          <button class="btn btn-ghost" id="clearBtn">Clear Filters</button>
+        </div>
+      </div>
+
+      <div class="map-placeholder card mb-5" id="mapPlaceholder">
+        <div class="empty-state"><div class="es-icon">🗺️</div>Map search visualization — pin locations of matching contractors around your selected district. (Integrate Google/Leaflet maps here with a server-side API key.)</div>
+      </div>
+
+      <div class="flex justify-between items-center mb-3">
+        <h3 id="resultsCount">Contractors</h3>
+        <div class="pill-tab"><button class="active" data-sort="rating">Top Rated</button><button data-sort="experience">Most Experienced</button><button data-sort="labour">Largest Team</button></div>
+      </div>
+      <div class="grid grid-3" id="resultsGrid"></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="inviteModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Invite to Tender</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <p class="text-muted">Select one of your published tenders to notify <b id="inviteContractorName"></b>.</p>
+      <div id="inviteTenderList"></div>
+    </div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Project Workspace — SubletWorks.com</title>
+<meta name="description" content="Project workspace with Gantt, Kanban, Calendar, MB Sheet, RA Bill, DPR and Hindrance tracking.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter" id="mainContent">
+      <div id="projectPicker" class="hidden">
+        <h1>Project Workspace</h1>
+        <p class="text-muted mb-5">Select a project to open its Gantt, Kanban, MB Sheet, RA Bill, DPR and Hindrance tracking.</p>
+        <div class="grid grid-3" id="pickerGrid"></div>
+      </div>
+
+      <div id="workspaceRoot" class="hidden">
+        <div id="projHeader" class="mb-4"></div>
+        <div class="tabs mb-4" data-tab-group id="wsTabs">
+          <button class="tab-btn active" data-tab="overview">Overview</button>
+          <button class="tab-btn" data-tab="gantt">Gantt</button>
+          <button class="tab-btn" data-tab="kanban">Kanban</button>
+          <button class="tab-btn" data-tab="calendar">Calendar</button>
+          <button class="tab-btn" data-tab="mb">MB Sheet</button>
+          <button class="tab-btn" data-tab="rabill">RA Bill</button>
+          <button class="tab-btn" data-tab="dpr">DPR</button>
+          <button class="tab-btn" data-tab="hindrance">Hindrance</button>
+          <button class="tab-btn" data-tab="payments">Payment Requests</button>
+        </div>
+        <div class="tab-panel active" data-tab-panel="overview" id="panelOverview"></div>
+        <div class="tab-panel" data-tab-panel="gantt" id="panelGantt"></div>
+        <div class="tab-panel" data-tab-panel="kanban" id="panelKanban"></div>
+        <div class="tab-panel" data-tab-panel="calendar" id="panelCalendar"></div>
+        <div class="tab-panel" data-tab-panel="mb" id="panelMB"></div>
+        <div class="tab-panel" data-tab-panel="rabill" id="panelRABill"></div>
+        <div class="tab-panel" data-tab-panel="dpr" id="panelDPR"></div>
+        <div class="tab-panel" data-tab-panel="hindrance" id="panelHindrance"></div>
+        <div class="tab-panel" data-tab-panel="payments" id="panelPayments"></div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="genericModal">
+  <div class="modal modal-lg">
+    <div class="modal-head"><h3 id="genericModalTitle">Modal</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body" id="genericModalBody"></div>
+    <div class="modal-foot" id="genericModalFoot"></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

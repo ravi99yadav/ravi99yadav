@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search Tenders — SubletWorks.com</title>
+<meta name="description" content="Find tenders by area, work type and budget. Save favourites and submit bids.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <h1>Search Tenders</h1>
+      <p class="text-muted mb-5">Find sublet work by area, trade and budget — save favourites and submit bids directly.</p>
+
+      <div class="card mb-5">
+        <div class="grid grid-4">
+          <div class="field"><label>District / Area</label><input class="input" id="fDistrict" placeholder="e.g. Gurugram"></div>
+          <div class="field"><label>State</label><input class="input" id="fState" placeholder="e.g. Haryana"></div>
+          <div class="field"><label>Work Type / Trade</label>
+            <select class="select" id="fTrade"><option value="">All Trades</option><option>Civil</option><option>Structural</option><option>Electrical</option><option>MEP</option><option>Plumbing</option><option>Fire Fighting</option><option>Interior</option></select>
+          </div>
+          <div class="field"><label>Minimum Estimated Value (₹)</label><input class="input" type="number" id="fMinValue" placeholder="e.g. 500000"></div>
+        </div>
+        <div class="flex gap-2"><button class="btn btn-primary" id="searchBtn">Search</button><button class="btn btn-ghost" id="clearBtn">Clear</button></div>
+      </div>
+
+      <div class="map-placeholder card mb-5">
+        <div class="empty-state"><div class="es-icon">🗺️</div>Map search — tenders pinned by district &amp; radius. (Integrate a maps API key server-side.)</div>
+      </div>
+
+      <div class="flex justify-between items-center mb-3">
+        <div class="pill-tab" id="viewTabs"><button class="active" data-view="all">All Tenders</button><button data-view="saved">Saved</button><button data-view="favourite">Favourites</button></div>
+      </div>
+      <div class="grid grid-3" id="resultsGrid"></div>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

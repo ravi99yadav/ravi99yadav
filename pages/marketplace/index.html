@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Materials Marketplace — SubletWorks.com</title>
+<meta name="description" content="Buy and sell surplus construction material, equipment and scrap.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:10px">
+        <div><h1>Materials Marketplace</h1><p class="text-muted">Buy &amp; sell surplus material, equipment and scrap across the SubletWorks network.</p></div>
+        <button class="btn btn-primary" id="sellBtn">+ Sell / List an Item</button>
+      </div>
+
+      <div class="card mb-5">
+        <div class="grid grid-4">
+          <div class="field"><label>Category</label><select class="select" id="fCategory"><option value="">All</option><option>Material</option><option>Equipment</option><option>Scrap</option></select></div>
+          <div class="field"><label>Condition</label><select class="select" id="fCondition"><option value="">Any</option><option>New</option><option>Good</option><option>Used</option><option>Scrap</option></select></div>
+          <div class="field"><label>District / Location</label><input class="input" id="fDistrict" placeholder="e.g. Gurugram"></div>
+          <div class="field"><label>Max Price (₹)</label><input class="input" type="number" id="fMaxPrice"></div>
+        </div>
+        <div class="flex gap-2"><button class="btn btn-primary" id="searchBtn">Search</button><button class="btn btn-ghost" id="clearBtn">Clear</button></div>
+      </div>
+
+      <div class="map-placeholder card mb-5"><div class="empty-state"><div class="es-icon">🗺️</div>Map view of listings near you. (Integrate maps API server-side.)</div></div>
+
+      <div class="pill-tab mb-3" id="viewTabs"><button class="active" data-view="all">All Listings</button><button data-view="mine">My Listings</button></div>
+      <div class="grid grid-3" id="listingsGrid"></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="listingModal">
+  <div class="modal">
+    <div class="modal-head"><h3 id="listingModalTitle">List an Item</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Category</label><select class="select" id="lCategory"><option>Material</option><option>Equipment</option><option>Scrap</option></select></div>
+      <div class="field"><label>Title</label><input class="input" id="lTitle" placeholder="e.g. TMT Fe500 Steel Bars – Surplus Stock"></div>
+      <div class="input-group">
+        <div class="field"><label>Quantity</label><input class="input" id="lQty" placeholder="e.g. 12 MT"></div>
+        <div class="field"><label>Condition</label><select class="select" id="lCondition"><option>New</option><option>Good</option><option>Used</option><option>Scrap</option></select></div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Price (₹)</label><input class="input" type="number" id="lPrice"></div>
+        <div class="field"><label>Price Unit</label><input class="input" id="lPriceUnit" placeholder="e.g. per MT / per day / lump sum"></div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>District</label><input class="input" id="lDistrict"></div>
+        <div class="field"><label>State</label><input class="input" id="lState"></div>
+      </div>
+      <div class="field"><label>Description</label><textarea class="textarea" id="lDesc"></textarea></div>
+      <div class="field"><label>Photos</label><div class="dropzone" style="padding:20px"><p style="margin:0">📷 Photo upload placeholder</p></div></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="listingSave">Publish Listing</button></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="contactModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Contact Seller</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body" id="contactModalBody"></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

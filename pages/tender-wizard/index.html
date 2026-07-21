@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Create Tender — SubletWorks.com</title>
+<meta name="description" content="Create a tender with a full BOQ builder, Excel paste, payment terms and milestones.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-4">
+        <h1>Create Tender</h1>
+        <span class="badge badge-neutral" id="draftBadge">Draft — autosaves as you go</span>
+      </div>
+
+      <div class="steps" id="steps">
+        <div class="step active" data-step="1">1. Project Info</div>
+        <div class="step" data-step="2">2. BOQ Builder</div>
+        <div class="step" data-step="3">3. Commercial Terms</div>
+        <div class="step" data-step="4">4. Drawings &amp; Milestones</div>
+        <div class="step" data-step="5">5. Review &amp; Publish</div>
+      </div>
+
+      <div id="duplicateBanner" class="card mb-4 hidden" style="border-left:4px solid var(--sw-warning)"></div>
+
+      <!-- STEP 1 -->
+      <section class="card step-panel" data-panel="1">
+        <h3>Project &amp; Tender Details</h3>
+        <div class="input-group">
+          <div class="field"><label>Tender Title</label><input class="input" id="fTitle" data-validate="required"><div class="error-msg">Title is required.</div></div>
+          <div class="field"><label>Work Type / Trade</label>
+            <select class="select" id="fWorkType"><option>Civil</option><option>Structural</option><option>Electrical</option><option>MEP</option><option>Plumbing</option><option>Fire Fighting</option><option>Interior</option><option>Other</option></select>
+          </div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>District / Area</label><input class="input" id="fDistrict" data-validate="required"><div class="error-msg">District is required.</div></div>
+          <div class="field"><label>State</label><input class="input" id="fState" data-validate="required"><div class="error-msg">State is required.</div></div>
+        </div>
+        <div class="field"><label>Scope Description</label><textarea class="textarea" id="fDescription" data-validate="required"></textarea><div class="error-msg">Please describe the scope.</div></div>
+        <div class="input-group">
+          <div class="field"><label>Project Start Date</label><input class="input" type="date" id="fStartDate"></div>
+          <div class="field"><label>Project End Date</label><input class="input" type="date" id="fEndDate"></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>Bid Submission Deadline</label><input class="input" type="date" id="fDeadline" data-validate="required"><div class="error-msg">Set a bid deadline.</div></div>
+          <div class="field"><label>Estimated Contract Value (₹)</label><input class="input" type="number" id="fEstValue"></div>
+        </div>
+        <div class="field">
+          <label>How much of the BOQ will you define?</label>
+          <div class="pill-tab"><button class="active" data-boqmode="full">Full BOQ (item-wise)</button><button data-boqmode="partial">Partial / Some Items</button><button data-boqmode="lumpsum-only">Lump Sum Only (no BOQ)</button></div>
+          <p class="hint">Choose "Lump Sum Only" for scopes where you just want a single overall quote instead of a full item-wise BOQ.</p>
+        </div>
+      </section>
+
+      <!-- STEP 2 -->
+      <section class="card step-panel hidden" data-panel="2">
+        <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+          <h3>BOQ Builder</h3>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" id="addItemLibraryBtn">+ Add from Item Library</button>
+            <button class="btn btn-outline btn-sm" id="addRowBtn">+ Add Row</button>
+            <label class="btn btn-outline btn-sm" for="csvImportInput">Import CSV</label>
+            <input type="file" id="csvImportInput" accept=".csv" class="hidden">
+          </div>
+        </div>
+        <p class="hint mb-3">💡 Tip: Copy a range from Excel/Google Sheets (Sr No, Description, Unit, Qty columns) and paste directly into the first cell below.</p>
+        <div class="table-wrap">
+          <table class="dtable" id="boqTable">
+            <thead><tr><th style="width:50px">Sr</th><th>Description</th><th style="width:100px">Unit</th><th style="width:110px">Qty</th><th style="width:50px"></th></tr></thead>
+            <tbody id="boqTbody"></tbody>
+          </table>
+        </div>
+        <div class="flex justify-between mt-3"><span class="text-muted" id="boqCount">0 items</span></div>
+      </section>
+
+      <!-- STEP 3 -->
+      <section class="card step-panel hidden" data-panel="3">
+        <h3>Commercial Terms</h3>
+        <div class="field"><label>Payment Terms</label><textarea class="textarea" id="fPaymentTerms" placeholder="e.g. 20% advance, RA bills monthly against measured work, 10% on completion"></textarea></div>
+        <div class="input-group">
+          <div class="field"><label>Retention (%)</label><input class="input" type="number" id="fRetention" value="5"></div>
+          <div class="field"><label>Bank Guarantee (%)</label><input class="input" type="number" id="fBG" value="5"></div>
+          <div class="field"><label>Security Deposit (%)</label><input class="input" type="number" id="fSD" value="3"></div>
+        </div>
+      </section>
+
+      <!-- STEP 4 -->
+      <section class="card step-panel hidden" data-panel="4">
+        <h3>Drawings &amp; Technical Specification</h3>
+        <div class="dropzone" id="dropzone">
+          <p>📎 Drag &amp; drop drawing files here, or click to browse</p>
+          <input type="file" id="fileInput" class="hidden" multiple>
+        </div>
+        <div id="fileList" class="mt-3"></div>
+        <div class="field mt-4"><label>Technical Specification Notes</label><textarea class="textarea" id="fTechSpec"></textarea></div>
+
+        <h3 class="mt-5">Milestones</h3>
+        <div id="milestoneList"></div>
+        <button class="btn btn-outline btn-sm mt-2" id="addMilestoneBtn">+ Add Milestone</button>
+      </section>
+
+      <!-- STEP 5 -->
+      <section class="card step-panel hidden" data-panel="5">
+        <h3>Review &amp; Publish</h3>
+        <div id="reviewSummary"></div>
+      </section>
+
+      <div class="flex justify-between mt-5">
+        <button class="btn btn-ghost" id="backBtn">← Back</button>
+        <div class="flex gap-2">
+          <button class="btn btn-outline" id="saveDraftBtn">Save as Draft</button>
+          <button class="btn btn-primary" id="nextBtn">Next →</button>
+          <button class="btn btn-success hidden" id="publishBtn">🚀 Publish Tender</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

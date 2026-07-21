@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Log In — SubletWorks.com</title>
+<meta name="description" content="Log in to SubletWorks as a Project Manager, Contractor or Admin.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body class="auth-body">
+<div class="auth-wrap">
+  <div class="auth-visual glass">
+    <a href="../../index.html" class="lp-brand" style="color:#fff"><span class="logo-mark">SW</span> SubletWorks</a>
+    <h1>India's Construction Marketplace &amp; Project Management Operating System</h1>
+    <p>Float tenders, bid transparently, negotiate securely and manage every project from LOI to final bill.</p>
+    <ul class="auth-visual-list">
+      <li>✔ L1/L2/L3 bid comparison</li>
+      <li>✔ Masked negotiation until contact unlock</li>
+      <li>✔ Auto LOI &amp; Work Order</li>
+      <li>✔ Gantt, Kanban &amp; MB Sheet built in</li>
+    </ul>
+  </div>
+
+  <div class="auth-card card">
+    <div class="pill-tab mb-5" id="roleTabs">
+      <button class="active" data-role="pm">Project Manager</button>
+      <button data-role="contractor">Contractor</button>
+      <button data-role="admin">Admin</button>
+    </div>
+
+    <div id="loginPanel">
+      <h2>Welcome back</h2>
+      <p class="text-muted mb-4">Log in to continue to your <span id="roleLabelText">Project Manager</span> workspace.</p>
+
+      <div class="card no-print" style="background:var(--surface-2);padding:12px;margin-bottom:20px;">
+        <div class="flex items-center justify-between">
+          <span style="font-size:13px;font-weight:600">🎬 Try instantly with a demo account</span>
+          <button class="btn btn-outline btn-sm" id="demoLoginBtn">Use Demo Account</button>
+        </div>
+      </div>
+
+      <form id="loginForm" novalidate>
+        <div class="field">
+          <label>Email or Mobile Number</label>
+          <input class="input" name="identifier" placeholder="you@company.com or 98XXXXXXXX" data-validate="required">
+          <div class="error-msg">This field is required.</div>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input class="input" type="password" name="password" placeholder="••••••••" data-validate="required|minlen:4">
+          <div class="error-msg">Enter your password (min 4 characters).</div>
+        </div>
+        <div class="flex items-center justify-between mb-4">
+          <label class="checkbox-row"><input type="checkbox" name="remember" checked> Remember me</label>
+          <a href="#" id="forgotLink" style="font-size:13px">Forgot password?</a>
+        </div>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Log In</button>
+        <p class="text-center mt-4" style="font-size:13px">New to SubletWorks? <a href="#" id="showRegister">Create an account</a></p>
+      </form>
+    </div>
+
+    <div id="registerPanel" class="hidden">
+      <h2>Create your account</h2>
+      <p class="text-muted mb-4">Sign up as a <span id="roleLabelText2">Project Manager</span>.</p>
+      <form id="registerForm" novalidate>
+        <div class="input-group">
+          <div class="field"><label>Full Name</label><input class="input" name="name" data-validate="required"><div class="error-msg">Name is required.</div></div>
+          <div class="field"><label>Company Name</label><input class="input" name="companyName" data-validate="required"><div class="error-msg">Company name is required.</div></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>Email</label><input class="input" name="email" data-validate="required|email"><div class="error-msg">Enter a valid email.</div></div>
+          <div class="field"><label>Mobile Number</label><input class="input" name="phone" data-validate="required|phone"><div class="error-msg">Enter a valid 10-digit number.</div></div>
+        </div>
+        <div class="input-group">
+          <div class="field"><label>District</label><input class="input" name="district" data-validate="required"><div class="error-msg">District is required.</div></div>
+          <div class="field"><label>State</label><input class="input" name="state" data-validate="required"><div class="error-msg">State is required.</div></div>
+        </div>
+        <div class="field contractor-only hidden">
+          <label>GSTIN (optional)</label><input class="input" name="gst" placeholder="22AAAAA0000A1Z5">
+        </div>
+        <div class="field"><label>Password</label><input class="input" type="password" name="password" data-validate="required|minlen:6"><div class="error-msg">Minimum 6 characters.</div></div>
+        <p class="text-muted" style="font-size:12px" id="registerNote"></p>
+        <button class="btn btn-primary btn-block btn-lg" type="submit">Create Account</button>
+        <p class="text-center mt-4" style="font-size:13px">Already have an account? <a href="#" id="showLogin">Log in</a></p>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="forgotModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Reset Password</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body" id="forgotStep1">
+      <p class="text-muted">Enter your registered email or mobile — we'll send a one-time password (OTP).</p>
+      <div class="field"><label>Email or Mobile</label><input class="input" id="forgotIdentifier" placeholder="you@company.com or 98XXXXXXXX"></div>
+      <button class="btn btn-primary btn-block" id="sendOtpBtn">Send OTP</button>
+    </div>
+    <div class="modal-body hidden" id="forgotStep2">
+      <p class="text-muted">Demo OTP is <b>123456</b> (simulated — no SMS/email is actually sent in this preview build).</p>
+      <div class="field"><label>Enter OTP</label><input class="input" id="otpInput" maxlength="6" placeholder="123456"></div>
+      <div class="field"><label>New Password</label><input class="input" type="password" id="newPasswordInput" placeholder="Minimum 6 characters"></div>
+      <button class="btn btn-primary btn-block" id="resetPasswordBtn">Reset Password</button>
+    </div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

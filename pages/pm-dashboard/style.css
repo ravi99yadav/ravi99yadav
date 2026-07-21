@@ -1,0 +1,9 @@
+.weather-box{text-align:center;padding:10px 0;}
+.weather-temp{font-size:40px;font-weight:800;font-family:var(--font-display);}
+.attn-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap;}
+.attn-row:last-child{border-bottom:none;}
+.proj-row{padding:12px 0;border-bottom:1px solid var(--border);}
+.proj-row:last-child{border-bottom:none;}
+.deadline-row{display:flex;justify-content:space-between;font-size:13px;padding:8px 0;border-bottom:1px solid var(--border);}
+.deadline-row:last-child{border-bottom:none;}
+@media (max-width:960px){#mainGrid{grid-template-columns:1fr !important;}}

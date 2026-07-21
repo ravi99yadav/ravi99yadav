@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tender Detail — SubletWorks.com</title>
+<meta name="description" content="Tender detail: BOQ, bid comparison, secure negotiation and contact unlock.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div id="tenderHeader"></div>
+      <div id="unlockBannerSlot" class="mb-5"></div>
+
+      <div class="tabs mb-4" data-tab-group>
+        <button class="tab-btn active" data-tab="overview">Overview</button>
+        <button class="tab-btn" data-tab="boq">BOQ</button>
+        <button class="tab-btn" data-tab="bids" id="bidsTabBtn">Bids</button>
+        <button class="tab-btn" data-tab="chat">Negotiation Chat</button>
+        <button class="tab-btn" data-tab="docs">Documents</button>
+      </div>
+
+      <div class="tab-panel active" data-tab-panel="overview" id="panelOverview"></div>
+      <div class="tab-panel" data-tab-panel="boq" id="panelBoq"></div>
+      <div class="tab-panel" data-tab-panel="bids" id="panelBids"></div>
+      <div class="tab-panel" data-tab-panel="chat" id="panelChat"></div>
+      <div class="tab-panel" data-tab-panel="docs" id="panelDocs"></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="payModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Unlock Contact Details</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <div class="unlock-banner mb-4">
+        <div><div style="font-size:13px;opacity:.9">One-time fee for this project</div><div class="unlock-price"><span class="old">₹999</span><span class="new">₹99</span></div></div>
+        <span class="badge" style="background:rgba(255,255,255,.25);color:#fff">Limited-time offer</span>
+      </div>
+      <p class="text-muted">This simulates a payment gateway for the demo build. Clicking "Pay Now" marks your ₹99 contact-unlock fee as paid instantly.</p>
+      <div class="field"><label>Card / UPI (demo)</label><input class="input" placeholder="4242 4242 4242 4242" value="4242 4242 4242 4242" disabled></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" data-close-modal>Cancel</button><button class="btn btn-success" id="payNowBtn">Pay ₹99 Now</button></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

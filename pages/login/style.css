@@ -1,0 +1,13 @@
+.auth-body{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
+.auth-wrap{display:grid;grid-template-columns:1fr 1fr;gap:0;max-width:1000px;width:100%;border-radius:var(--r-xl);overflow:hidden;box-shadow:var(--shadow-lg);}
+.auth-visual{background:var(--sw-gradient-brand);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:center;border-radius:0;}
+.auth-visual h1{font-size:28px;margin:20px 0 14px;}
+.auth-visual p{color:rgba(255,255,255,.85);}
+.auth-visual-list{list-style:none;padding:0;margin-top:20px;font-size:14px;}
+.auth-visual-list li{margin-bottom:10px;}
+.auth-visual .lp-brand{font-size:20px;margin-bottom:10px;}
+.auth-visual .logo-mark{background:rgba(255,255,255,.25);}
+.auth-card{border-radius:0;padding:44px;}
+@media (max-width:860px){.auth-wrap{grid-template-columns:1fr;}.auth-visual{display:none;}}
+#roleTabs{width:100%;justify-content:space-between;}
+#roleTabs button{flex:1;}

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Panel — SubletWorks.com</title>
+<meta name="description" content="Admin control center: approvals, pricing, analytics, revenue and fraud monitoring.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <h1>Admin Panel</h1>
+      <p class="text-muted mb-5">Platform-wide approvals, pricing control, analytics and fraud monitoring.</p>
+
+      <div class="grid grid-4 mb-5" id="kpiGrid"></div>
+
+      <div class="tabs mb-4" data-tab-group>
+        <button class="tab-btn active" data-tab="approvals">User Approvals</button>
+        <button class="tab-btn" data-tab="payments">Payment Approvals</button>
+        <button class="tab-btn" data-tab="pricing">Pricing &amp; Offer Control</button>
+        <button class="tab-btn" data-tab="analytics">Analytics</button>
+        <button class="tab-btn" data-tab="fraud">Fraud Detection</button>
+        <button class="tab-btn" data-tab="audit">Audit Log</button>
+      </div>
+
+      <div class="tab-panel active" data-tab-panel="approvals" id="panelApprovals"></div>
+      <div class="tab-panel" data-tab-panel="payments" id="panelPayments"></div>
+      <div class="tab-panel" data-tab-panel="pricing" id="panelPricing"></div>
+      <div class="tab-panel" data-tab-panel="analytics" id="panelAnalytics"></div>
+      <div class="tab-panel" data-tab-panel="fraud" id="panelFraud"></div>
+      <div class="tab-panel" data-tab-panel="audit" id="panelAudit"></div>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

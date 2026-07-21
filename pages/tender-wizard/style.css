@@ -1,0 +1,5 @@
+.dropzone{border:2px dashed var(--border-strong);border-radius:var(--r-lg);padding:36px;text-align:center;color:var(--text-muted);cursor:pointer;transition:background var(--t-fast);}
+.dropzone.dragover{background:rgba(91,92,235,.08);border-color:var(--sw-primary);}
+.file-chip{display:inline-flex;align-items:center;gap:8px;background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r-pill);padding:6px 12px;font-size:12px;margin:4px 6px 0 0;}
+.milestone-row{display:grid;grid-template-columns:2fr 1fr auto;gap:10px;margin-bottom:10px;align-items:center;}
+.review-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border);font-size:14px;}

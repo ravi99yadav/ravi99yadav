@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — SubletWorks.com</title>
+<meta name="description" content="Project Manager dashboard: tenders, projects, deadlines and activity at a glance.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-5" style="flex-wrap:wrap;gap:12px">
+        <div>
+          <h1 id="greeting">Good morning 👋</h1>
+          <p class="text-muted">Here's what's happening across your tenders and projects today.</p>
+        </div>
+        <div class="flex gap-2">
+          <a href="../tender-wizard/index.html" class="btn btn-primary">+ Create Tender</a>
+          <a href="../pm-contractors/index.html" class="btn btn-outline">Search Contractors</a>
+        </div>
+      </div>
+
+      <div class="grid grid-4 mb-5" id="kpiGrid"></div>
+
+      <div class="grid" style="grid-template-columns:2fr 1fr;gap:20px" id="mainGrid">
+        <div class="flex flex-col gap-5">
+          <div class="card">
+            <div class="card-header"><h3>Tenders Needing Attention</h3><a href="../pm-tenders/index.html" class="btn btn-ghost btn-sm">View All</a></div>
+            <div id="tendersAttention"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Running Projects</h3><a href="../project-workspace/index.html" class="btn btn-ghost btn-sm">Open Workspace</a></div>
+            <div id="projectsList"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-5">
+          <div class="card" id="weatherCard">
+            <div class="card-header"><h3>Weather</h3><span class="badge badge-neutral">Placeholder</span></div>
+            <div class="weather-box">
+              <div class="weather-temp">28°C</div>
+              <div class="text-muted">Partly Cloudy · Gurugram</div>
+              <p class="hint mt-2">Live weather integration can be connected here once a weather API key is configured server-side.</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Upcoming Deadlines</h3></div>
+            <div id="deadlinesList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>Recent Activity</h3></div>
+            <div class="timeline" id="activityTimeline"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,3 @@
+.tender-card{padding:18px;}
+.tender-card .tc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;}
+.tender-card .tc-fav{background:none;border:none;font-size:20px;cursor:pointer;}

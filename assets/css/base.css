@@ -1,0 +1,68 @@
+/* ==========================================================================
+   SUBLETWORKS.COM — Base / Reset / Layout
+   ========================================================================== */
+*,*::before,*::after{box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{
+  margin:0;
+  font-family:var(--font-body);
+  font-size:var(--fs-base);
+  color:var(--text);
+  background:var(--bg-canvas);
+  background-attachment:fixed;
+  min-height:100vh;
+  -webkit-font-smoothing:antialiased;
+  transition:background var(--t-slow) var(--ease),color var(--t-slow) var(--ease);
+}
+h1,h2,h3,h4,h5,h6{font-family:var(--font-display);font-weight:600;margin:0 0 var(--sp-3);line-height:1.25;}
+h1{font-size:var(--fs-3xl);}
+h2{font-size:var(--fs-2xl);}
+h3{font-size:var(--fs-xl);}
+p{margin:0 0 var(--sp-3);color:var(--text-muted);}
+a{color:var(--sw-primary);text-decoration:none;}
+ul,ol{padding-left:1.2em;}
+img,svg{max-width:100%;display:block;}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit;}
+button{cursor:pointer;}
+:focus-visible{outline:2px solid var(--sw-primary);outline-offset:2px;border-radius:4px;}
+.sr-only{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;}
+
+/* Layout shell */
+.app-shell{display:flex;min-height:100vh;}
+.app-main{flex:1;display:flex;flex-direction:column;min-width:0;max-width:100%;margin-left:var(--sidebar-w);transition:margin var(--t-med) var(--ease);}
+.app-content{min-width:0;}
+.app-shell.sidebar-collapsed .app-main{margin-left:var(--sidebar-w-collapsed);}
+.app-content{padding:var(--sp-6);flex:1;max-width:1600px;width:100%;margin:0 auto;}
+@media (max-width:1024px){
+  .app-main{margin-left:0;}
+  .app-content{padding:var(--sp-4);}
+}
+
+.container{max-width:1200px;margin:0 auto;padding:0 var(--sp-5);}
+.grid{display:grid;gap:var(--sp-5);}
+.grid-2{grid-template-columns:repeat(2,minmax(0,1fr));}
+.grid-3{grid-template-columns:repeat(3,minmax(0,1fr));}
+.grid-4{grid-template-columns:repeat(4,minmax(0,1fr));}
+@media (max-width:1100px){.grid-4{grid-template-columns:repeat(2,1fr);}.grid-3{grid-template-columns:repeat(2,1fr);}}
+@media (max-width:640px){.grid-2,.grid-3,.grid-4{grid-template-columns:1fr;}}
+
+.flex{display:flex;flex-wrap:wrap;min-width:0;}
+.flex-col{flex-direction:column;}
+.items-center{align-items:center;}
+.justify-between{justify-content:space-between;}
+.gap-1{gap:var(--sp-1);}.gap-2{gap:var(--sp-2);}.gap-3{gap:var(--sp-3);}.gap-4{gap:var(--sp-4);}.gap-5{gap:var(--sp-5);}
+.text-muted{color:var(--text-muted);}
+.text-center{text-align:center;}
+.w-full{width:100%;}
+.mt-1{margin-top:var(--sp-1);}.mt-2{margin-top:var(--sp-2);}.mt-3{margin-top:var(--sp-3);}.mt-4{margin-top:var(--sp-4);}.mt-5{margin-top:var(--sp-5);}.mt-6{margin-top:var(--sp-6);}
+.mb-1{margin-bottom:var(--sp-1);}.mb-2{margin-bottom:var(--sp-2);}.mb-3{margin-bottom:var(--sp-3);}.mb-4{margin-bottom:var(--sp-4);}.mb-5{margin-bottom:var(--sp-5);}
+.hidden{display:none !important;}
+
+/* Print helpers used across print-ready pages */
+@media print{
+  .no-print{display:none !important;}
+  body{background:#fff !important;}
+  .print-area{box-shadow:none !important;border:none !important;}
+}
+.print-portrait .print-page{width:210mm;min-height:297mm;}
+.print-landscape .print-page{width:297mm;min-height:210mm;}

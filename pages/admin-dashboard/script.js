@@ -1,0 +1,138 @@
+(function(){
+  "use strict";
+  const user = SW.UI.mountShell({ roles:["admin"], active:"admin-dashboard" });
+  if(!user) return;
+  const DB = SW.DB, U = SW.Utils;
+
+  function revenue(){
+    const unlocks = DB.contactUnlocks.list(c=>c.pmPaid && c.contractorPaid);
+    const unlockRevenue = unlocks.reduce((s,u)=>s+u.amountEach*2,0);
+    const mpRevenue = DB.marketplaceInquiries.list(i=>i.paid).length * DB.settings.get("marketplaceFee",49);
+    return unlockRevenue + mpRevenue;
+  }
+
+  function renderKPIs(){
+    const pendingUsers = DB.users.list(u=>u.status==="pending").length;
+    const tenders = DB.tenders.list(t=>!t.archived).length;
+    const projects = DB.projects.list(p=>!p.archived).length;
+    const kpis = [
+      { label:"Pending Approvals", value:pendingUsers, icon:"👤", cls:"warm" },
+      { label:"Total Tenders", value:tenders, icon:"📄", cls:"" },
+      { label:"Active Projects", value:projects, icon:"🏗️", cls:"success" },
+      { label:"Platform Revenue", value:U.fmtINR(revenue()), icon:"💰", cls:"accent" }
+    ];
+    document.getElementById("kpiGrid").innerHTML = kpis.map(k=>`<div class="kpi-card card-gradient ${k.cls}"><div class="kpi-icon">${k.icon}</div><div class="kpi-value">${k.value}</div><div class="kpi-label">${k.label}</div></div>`).join("");
+  }
+
+  function renderApprovals(){
+    const pending = DB.users.list(u=>u.status==="pending");
+    document.getElementById("panelApprovals").innerHTML = `<div class="card"><h3>Pending Contractor Approvals</h3>
+      ${pending.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Email</th><th>District</th><th>Registered</th><th></th></tr></thead>
+      <tbody>${pending.map(u=>`<tr><td>${U.escapeHtml(u.name)}</td><td>${U.escapeHtml(u.email)}</td><td>${U.escapeHtml(u.district||"—")}</td><td>${U.fmtDate(u.createdAt)}</td>
+        <td><button class="btn btn-sm btn-success" data-approve-user="${u.id}">Approve</button> <button class="btn btn-sm btn-danger" data-suspend-user="${u.id}">Reject</button></td></tr>`).join("")}</tbody></table></div>`
+      : `<div class="empty-state">No pending approvals.</div>`}
+      <h3 class="mt-5">All Users</h3>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th>Name</th><th>Role</th><th>Status</th><th></th></tr></thead>
+      <tbody>${DB.users.list().map(u=>`<tr><td>${U.escapeHtml(u.name)}</td><td>${SW.UI.roleLabel(u.role)}</td><td><span class="badge ${u.status==='active'?'badge-success':u.status==='pending'?'badge-warning':'badge-danger'}">${u.status}</span></td>
+        <td>${u.status==='active' && u.role!=='admin' ? `<button class="btn btn-sm btn-ghost" data-suspend-user="${u.id}">Suspend</button>` : u.status==='suspended' ? `<button class="btn btn-sm btn-ghost" data-approve-user="${u.id}">Reactivate</button>` : ""}</td></tr>`).join("")}</tbody></table></div>
+      </div>`;
+  }
+  document.getElementById("panelApprovals").addEventListener("click", e=>{
+    const app = e.target.closest("[data-approve-user]"); const sus = e.target.closest("[data-suspend-user]");
+    if(app){ DB.users.update(app.dataset.approveUser, {status:"active"}); U.toast("User approved.", {type:"success"}); renderApprovals(); }
+    if(sus){ DB.users.update(sus.dataset.suspendUser, {status:"suspended"}); U.toast("User suspended.", {type:"warning"}); renderApprovals(); }
+  });
+
+  function renderPayments(){
+    const unlocks = DB.contactUnlocks.list();
+    const mp = DB.marketplaceInquiries.list();
+    document.getElementById("panelPayments").innerHTML = `
+      <div class="card mb-4"><h3>Contact Unlock Payments</h3>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th>Tender</th><th>PM Paid</th><th>Contractor Paid</th><th>Amount Each</th><th>Unlocked</th></tr></thead>
+      <tbody>${unlocks.length ? unlocks.map(u=>{ const t = DB.tenders.get(u.tenderId); return `<tr><td>${t?U.escapeHtml(t.title):'—'}</td><td>${u.pmPaid?'✅':'—'}</td><td>${u.contractorPaid?'✅':'—'}</td><td>${U.fmtINR(u.amountEach)}</td><td>${u.unlockedAt?U.fmtDate(u.unlockedAt):'—'}</td></tr>`; }).join("") : `<tr><td colspan="5"><div class="empty-state">No contact unlock transactions yet.</div></td></tr>`}</tbody></table></div></div>
+      <div class="card"><h3>Marketplace Connect Payments</h3>
+      <div class="table-wrap"><table class="dtable"><thead><tr><th>Listing</th><th>Buyer</th><th>Paid</th></tr></thead>
+      <tbody>${mp.length ? mp.map(m=>{ const l = DB.marketplaceListings.get(m.listingId); const b = DB.users.get(m.buyerId); return `<tr><td>${l?U.escapeHtml(l.title):'—'}</td><td>${b?U.escapeHtml(b.name):'—'}</td><td>${m.paid?'✅ Paid':'Pending'}</td></tr>`; }).join("") : `<tr><td colspan="3"><div class="empty-state">No marketplace transactions yet.</div></td></tr>`}</tbody></table></div></div>`;
+  }
+
+  function renderPricing(){
+    document.getElementById("panelPricing").innerHTML = `
+      <div class="card">
+        <h3>Contact Unlock Pricing</h3>
+        <div class="input-group">
+          <div class="field"><label>Regular Price (₹)</label><input class="input" id="pRegular" type="number" value="${DB.settings.get('contactUnlockRegularPrice',999)}"></div>
+          <div class="field"><label>Offer Price (₹, per side)</label><input class="input" id="pOffer" type="number" value="${DB.settings.get('contactUnlockOfferPrice',99)}"></div>
+        </div>
+        <h3 class="mt-4">Marketplace Connect Fee</h3>
+        <label class="checkbox-row mb-2"><input type="checkbox" id="pMpEnabled" ${DB.settings.get('marketplaceFeeEnabled',false)?'checked':''}> Enable marketplace connect fee (currently ${DB.settings.get('marketplaceFeeEnabled',false)?'ON':'FREE'})</label>
+        <div class="field"><label>Fee Amount (₹)</label><input class="input" id="pMpFee" type="number" value="${DB.settings.get('marketplaceFee',49)}"></div>
+        <h3 class="mt-4">Platform Commission</h3>
+        <div class="field"><label>Commission on Awarded Contracts (%)</label><input class="input" id="pCommission" type="number" value="${DB.settings.get('platformCommissionPct',2)}"></div>
+        <button class="btn btn-primary mt-3" id="savePricingBtn">Save Settings</button>
+      </div>`;
+    document.getElementById("savePricingBtn").addEventListener("click", ()=>{
+      DB.settings.set("contactUnlockRegularPrice", +document.getElementById("pRegular").value||999);
+      DB.settings.set("contactUnlockOfferPrice", +document.getElementById("pOffer").value||99);
+      DB.settings.set("marketplaceFeeEnabled", document.getElementById("pMpEnabled").checked);
+      DB.settings.set("marketplaceFee", +document.getElementById("pMpFee").value||49);
+      DB.settings.set("platformCommissionPct", +document.getElementById("pCommission").value||2);
+      U.toast("Pricing settings saved.", {type:"success"});
+    });
+  }
+
+  function renderAnalytics(){
+    const byStatus = {};
+    DB.tenders.list().forEach(t=> byStatus[t.status] = (byStatus[t.status]||0)+1);
+    const max = Math.max(1, ...Object.values(byStatus));
+    const workTypes = {};
+    DB.tenders.list().forEach(t=> workTypes[t.workType] = (workTypes[t.workType]||0)+1);
+    const maxWt = Math.max(1, ...Object.values(workTypes));
+    document.getElementById("panelAnalytics").innerHTML = `
+      <div class="grid grid-2">
+        <div class="card"><h3>Tenders by Status</h3><div class="bar-chart">${Object.entries(byStatus).map(([k,v])=>`<div class="bar" style="height:${(v/max)*120+20}px"><span>${v}</span><div class="bar-label">${k}</div></div>`).join("")}</div></div>
+        <div class="card"><h3>Tenders by Trade</h3><div class="bar-chart">${Object.entries(workTypes).map(([k,v])=>`<div class="bar" style="height:${(v/maxWt)*120+20}px;background:var(--sw-gradient-accent)"><span>${v}</span><div class="bar-label">${k}</div></div>`).join("")}</div></div>
+      </div>
+      <div class="card mt-4"><h3>Project Analytics</h3>
+        <div class="grid grid-4">
+          <div><b>${DB.projects.list().length}</b><div class="text-muted" style="font-size:12px">Total Projects</div></div>
+          <div><b>${DB.projects.list(p=>p.status==='running').length}</b><div class="text-muted" style="font-size:12px">Running</div></div>
+          <div><b>${DB.projects.list(p=>p.status==='completed').length}</b><div class="text-muted" style="font-size:12px">Completed</div></div>
+          <div><b>${DB.hindrances.list(h=>h.status==='pending').length}</b><div class="text-muted" style="font-size:12px">Open Hindrances</div></div>
+        </div>
+      </div>`;
+  }
+
+  function renderFraud(){
+    const users = DB.users.list();
+    const phoneMap = {};
+    users.forEach(u=>{ if(u.phone){ phoneMap[u.phone] = phoneMap[u.phone]||[]; phoneMap[u.phone].push(u); } });
+    const flags = Object.values(phoneMap).filter(list=>list.length>1)
+      .map(list=>`Multiple accounts share phone number ${list[0].phone}: ${list.map(u=>u.name).join(", ")}`);
+    DB.tenders.list().forEach(t=>{
+      if(t.estimatedValue>0){
+        DB.bids.list(b=>b.tenderId===t.id).forEach(b=>{
+          const total = DB.bidItems.list(bi=>bi.bidId===b.id).reduce((s,i)=>s+i.amount,0);
+          if(total && total < t.estimatedValue*0.4) flags.push(`Suspiciously low bid (${U.fmtINR(total)}) vs estimate ${U.fmtINR(t.estimatedValue)} on "${t.title}" — possible lowballing.`);
+        });
+      }
+    });
+    document.getElementById("panelFraud").innerHTML = `<div class="card"><h3>Automated Fraud Flags</h3>${flags.length ? flags.map(f=>`<div class="fraud-flag">⚠️ ${U.escapeHtml(f)}</div>`).join("") : `<div class="empty-state">No fraud signals detected.</div>`}</div>`;
+  }
+
+  function renderAudit(){
+    const logs = DB._store.auditLogs.slice().sort((a,b)=>new Date(b.at)-new Date(a.at)).slice(0,100);
+    document.getElementById("panelAudit").innerHTML = `<div class="card"><h3>Platform Audit Log</h3><div class="table-wrap"><table class="dtable"><thead><tr><th>Time</th><th>Entity</th><th>Action</th><th>User</th></tr></thead>
+      <tbody>${logs.map(l=>{ const u = DB.users.get(l.userId); return `<tr><td>${U.fmtDateTime(l.at)}</td><td>${l.entity}</td><td>${l.action}</td><td>${u?U.escapeHtml(u.name):'System'}</td></tr>`; }).join("")}</tbody></table></div></div>`;
+  }
+
+  renderKPIs(); renderApprovals(); renderPayments(); renderPricing(); renderAnalytics(); renderFraud(); renderAudit();
+  U.initTabs();
+
+  SW.UI.helpSection(document.querySelector(".app-content"), "Admin Panel", [
+    "Approve or reject newly registered contractor accounts before they can bid on tenders.",
+    "Track every contact-unlock (₹99) and marketplace connect (₹49) payment across the platform.",
+    "Change the contact unlock offer price, marketplace fee (default off/free) and platform commission at any time — changes apply platform-wide immediately.",
+    "Fraud Detection flags shared phone numbers across accounts and unusually low bids as early warning signals.",
+    "The Audit Log gives a full trail of every create/update/delete action for compliance."
+  ]);
+})();

@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Tenders — SubletWorks.com</title>
+<meta name="description" content="Manage your draft, published and archived tenders.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:10px">
+        <h1>My Tenders</h1>
+        <a href="../tender-wizard/index.html" class="btn btn-primary">+ Create Tender</a>
+      </div>
+
+      <div class="flex justify-between items-center mb-4" style="flex-wrap:wrap;gap:10px">
+        <div class="pill-tab" id="statusTabs">
+          <button class="active" data-status="all">All</button>
+          <button data-status="draft">Draft</button>
+          <button data-status="published">Published</button>
+          <button data-status="awarded">Awarded</button>
+          <button data-status="archived">Archived</button>
+        </div>
+        <input class="input" style="max-width:260px" id="searchInput" placeholder="Search tenders…">
+      </div>
+
+      <div class="table-wrap">
+        <table class="dtable">
+          <thead><tr><th>Title</th><th>Location</th><th>Status</th><th>Bids</th><th>Deadline</th><th>Floated</th><th></th></tr></thead>
+          <tbody id="tenderTbody"></tbody>
+        </table>
+      </div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="historyModal">
+  <div class="modal">
+    <div class="modal-head"><h3>Version History</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body timeline" id="historyList"></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

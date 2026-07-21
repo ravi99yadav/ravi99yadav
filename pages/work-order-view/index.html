@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Work Order — SubletWorks.com</title>
+<meta name="description" content="Auto-generated, print-ready Work Order.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="print.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-4 no-print" style="flex-wrap:wrap;gap:10px">
+        <h1>Work Order</h1>
+        <div class="flex gap-2">
+          <div class="pill-tab"><button class="active" id="portraitBtn">Portrait</button><button id="landscapeBtn">Landscape</button></div>
+          <button class="btn btn-outline" id="editBtn">✎ Edit</button>
+          <button class="btn btn-outline" id="historyBtn">Version History</button>
+          <button class="btn btn-primary" id="printBtn">🖨 Print / Save PDF</button>
+          <a class="btn btn-success" id="openProjectBtn" href="#">Open Project Workspace →</a>
+        </div>
+      </div>
+      <div class="print-portrait" id="printModeWrap">
+        <div class="print-page print-area card" id="woDoc"></div>
+      </div>
+    </main>
+  </div>
+</div>
+<div class="modal-overlay" id="historyModal"><div class="modal"><div class="modal-head"><h3>Version History</h3><button class="btn-icon" data-close-modal>✕</button></div><div class="modal-body timeline" id="historyList"></div></div></div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

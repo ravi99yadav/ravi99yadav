@@ -1,0 +1,27 @@
+/* ==========================================================================
+   SUBLETWORKS.COM — Animation System
+   ========================================================================== */
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+@keyframes slideInRight{from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);}}
+@keyframes slideOutRight{to{opacity:0;transform:translateX(30px);}}
+@keyframes shimmer{100%{transform:translateX(100%);}}
+@keyframes ripple{to{transform:scale(3);opacity:0;}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 0 0 0 rgba(91,92,235,.35);}50%{box-shadow:0 0 0 10px rgba(91,92,235,0);}}
+@keyframes floatY{0%,100%{transform:translateY(0);}50%{transform:translateY(-8px);}}
+@keyframes spin{to{transform:rotate(360deg);}}
+@keyframes popIn{0%{opacity:0;transform:scale(.85);}60%{transform:scale(1.03);}100%{opacity:1;transform:scale(1);}}
+@keyframes confettiFall{0%{transform:translateY(-10px) rotate(0);opacity:1;}100%{transform:translateY(320px) rotate(360deg);opacity:0;}}
+
+.animate-fadeIn{animation:fadeIn var(--t-med) var(--ease);}
+.animate-fadeInUp{animation:fadeInUp var(--t-med) var(--ease);}
+.animate-pop{animation:popIn var(--t-med) var(--ease-spring);}
+.animate-float{animation:floatY 4s var(--ease) infinite;}
+.spin{animation:spin 1s linear infinite;}
+
+.page-enter{animation:fadeInUp .4s var(--ease);}
+
+.confetti-piece{position:fixed;top:0;width:8px;height:8px;z-index:1300;pointer-events:none;animation:confettiFall 1.6s var(--ease) forwards;}
+
+/* Loading skeleton row helper */
+.skeleton-row{height:16px;margin-bottom:8px;}

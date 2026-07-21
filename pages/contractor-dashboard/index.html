@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — SubletWorks.com</title>
+<meta name="description" content="Contractor dashboard: bids, projects, deadlines and activity.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="../pm-dashboard/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-5" style="flex-wrap:wrap;gap:12px">
+        <div><h1 id="greeting">Good morning 👋</h1><p class="text-muted">Track your bids, active projects and payments.</p></div>
+        <div class="flex gap-2">
+          <a href="../contractor-tenders/index.html" class="btn btn-primary">+ Find Tenders</a>
+        </div>
+      </div>
+
+      <div class="grid grid-4 mb-5" id="kpiGrid"></div>
+
+      <div class="grid" style="grid-template-columns:2fr 1fr;gap:20px" id="mainGrid">
+        <div class="flex flex-col gap-5">
+          <div class="card">
+            <div class="card-header"><h3>My Bids</h3><a href="../contractor-tenders/index.html" class="btn btn-ghost btn-sm">Find More Tenders</a></div>
+            <div id="bidsList"></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>My Projects</h3></div>
+            <div id="projectsList"></div>
+          </div>
+        </div>
+        <div class="flex flex-col gap-5">
+          <div class="card"><div class="card-header"><h3>Weather</h3><span class="badge badge-neutral">Placeholder</span></div>
+            <div class="weather-box"><div class="weather-temp">31°C</div><div class="text-muted">Sunny · Noida</div></div>
+          </div>
+          <div class="card"><div class="card-header"><h3>Upcoming Deadlines</h3></div><div id="deadlinesList"></div></div>
+          <div class="card"><div class="card-header"><h3>Recent Activity</h3></div><div class="timeline" id="activityTimeline"></div></div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

@@ -1,0 +1,10 @@
+.bid-card{border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;margin-bottom:14px;background:var(--surface);}
+.bid-card.expanded{box-shadow:var(--shadow-md);}
+.bid-card .bc-head{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;cursor:pointer;}
+.rank-badge{font-weight:800;font-family:var(--font-display);font-size:13px;padding:3px 10px;border-radius:var(--r-pill);}
+.rank-l1{background:var(--sw-gradient-success);color:#fff;}
+.rank-l2{background:var(--sw-gradient-brand);color:#fff;}
+.rank-l3{background:var(--sw-gradient-warm);color:#fff;}
+.rank-other{background:var(--surface-2);color:var(--text-muted);}
+.item-remark{background:rgba(245,158,11,.1);border-left:3px solid var(--sw-warning);padding:6px 10px;font-size:12px;margin-top:4px;border-radius:6px;}
+.doc-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}

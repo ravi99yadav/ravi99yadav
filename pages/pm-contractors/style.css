@@ -1,0 +1,4 @@
+.contractor-card{padding:18px;}
+.contractor-card .cc-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px;}
+.contractor-card .cc-tags{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0;}
+.contractor-card .cc-stats{display:flex;justify-content:space-between;font-size:12px;color:var(--text-muted);border-top:1px solid var(--border);padding-top:10px;margin-top:10px;}
