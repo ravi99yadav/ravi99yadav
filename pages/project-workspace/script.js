@@ -378,13 +378,52 @@
   }
 
   /* ================= MB SHEET ================= */
-  const FACTOR_PRESETS = [
-    { label:"No factor (1:1)", factor:1, unit:null },
-    { label:"TMT/Steel bar — weight (kg per running m; edit for your bar dia — 8mm≈0.395, 10mm≈0.617, 12mm≈0.888, 16mm≈1.578, 20mm≈2.466)", factor:0.395, unit:"kg" },
-    { label:"MS Pipe — weight (kg per running m, approx)", factor:2.5, unit:"kg" },
-    { label:"MS Plate — weight (kg per sqm per mm thick)", factor:7.85, unit:"kg" },
-    { label:"Binding wire — weight (kg per m, approx)", factor:0.015, unit:"kg" }
+  // Standard reference weights (IS 1786 for TMT bars: w = d²/162 kg/m; MS plate: thickness(mm) × 7.85 kg/sqm;
+  // MS pipe: approx medium-class values). Grouped for the Factor preset dropdown.
+  const FACTOR_PRESET_GROUPS = [
+    { group:"General", items:[
+      { label:"No factor (1:1)", factor:1, unit:null }
+    ]},
+    { group:"TMT/Steel Bar — weight (kg per running m)", items:[
+      { label:"6mm dia (0.222 kg/m)", factor:0.222, unit:"kg" },
+      { label:"8mm dia (0.395 kg/m)", factor:0.395, unit:"kg" },
+      { label:"10mm dia (0.617 kg/m)", factor:0.617, unit:"kg" },
+      { label:"12mm dia (0.888 kg/m)", factor:0.888, unit:"kg" },
+      { label:"16mm dia (1.578 kg/m)", factor:1.578, unit:"kg" },
+      { label:"20mm dia (2.466 kg/m)", factor:2.466, unit:"kg" },
+      { label:"25mm dia (3.853 kg/m)", factor:3.853, unit:"kg" },
+      { label:"32mm dia (6.313 kg/m)", factor:6.313, unit:"kg" }
+    ]},
+    { group:"MS Plate — weight (kg per sqm)", items:[
+      { label:"6mm thick (47.1 kg/sqm)", factor:47.1, unit:"kg" },
+      { label:"8mm thick (62.8 kg/sqm)", factor:62.8, unit:"kg" },
+      { label:"10mm thick (78.5 kg/sqm)", factor:78.5, unit:"kg" },
+      { label:"12mm thick (94.2 kg/sqm)", factor:94.2, unit:"kg" },
+      { label:"16mm thick (125.6 kg/sqm)", factor:125.6, unit:"kg" },
+      { label:"20mm thick (157.0 kg/sqm)", factor:157.0, unit:"kg" }
+    ]},
+    { group:"MS Pipe — weight (kg per running m, approx medium class)", items:[
+      { label:'15mm / ½" NB (1.22 kg/m)', factor:1.22, unit:"kg" },
+      { label:'20mm / ¾" NB (1.62 kg/m)', factor:1.62, unit:"kg" },
+      { label:'25mm / 1" NB (2.5 kg/m)', factor:2.5, unit:"kg" },
+      { label:'32mm / 1¼" NB (3.2 kg/m)', factor:3.2, unit:"kg" },
+      { label:'40mm / 1½" NB (3.8 kg/m)', factor:3.8, unit:"kg" },
+      { label:'50mm / 2" NB (4.9 kg/m)', factor:4.9, unit:"kg" }
+    ]},
+    { group:"Other", items:[
+      { label:"Binding wire (kg per m, approx 1.5% of steel wt)", factor:0.015, unit:"kg" }
+    ]}
   ];
+  const FACTOR_PRESETS = FACTOR_PRESET_GROUPS.flatMap(g=>g.items.map(it=>Object.assign({group:g.group}, it)));
+  function factorPresetOptionsHtml(){
+    let idx = 0, html = "";
+    FACTOR_PRESET_GROUPS.forEach(g=>{
+      html += `<optgroup label="${U.escapeHtml(g.group)}">`;
+      g.items.forEach(it=>{ html += `<option value="${idx}">${U.escapeHtml(it.label)}</option>`; idx++; });
+      html += `</optgroup>`;
+    });
+    return html;
+  }
   function convertQtyToBoqUnit(qty, fromUnit, toUnit){
     const f = (fromUnit||"").trim().toLowerCase(), t = (toUnit||"").trim().toLowerCase();
     if(!f || !t || f===t) return qty;
@@ -421,7 +460,7 @@
     const rows = DB.mbRows.list(r=>r.mbSheetId===sheetId);
     const boqOptions = projectBoqItems();
     document.getElementById("mbContent").innerHTML = `
-      <p class="hint mb-2">💡 Every row measures against a specific BOQ item (official or an approved Extra Item) — pick it from the dropdown. Multiple rows against the same item sum together automatically in the Abstract below. Use a Factor preset for Steel/TMT/Pipe/Plate to auto-fill the multiplying factor and switch the row to a weight unit (kg) — the abstract converts kg → MT automatically when the BOQ item is billed in MT/Tons.</p>
+      <p class="hint mb-2">💡 Every row measures against a specific BOQ item (official or an approved Extra Item) — pick it from the dropdown. Multiple rows against the same item sum together automatically in the Abstract below. Use a Factor preset for Steel/TMT (by bar diameter)/Pipe/Plate to auto-fill the predefined weight and switch the row to kg — the abstract converts kg → MT automatically when the BOQ item is billed in MT/Tons. You can also paste a copied Excel range (Unit, Nos, Length, Breadth, Height, Factor columns) directly into any cell — extra rows are added automatically.</p>
       ${!boqOptions.length ? `<div class="empty-state mb-3">This project has no BOQ items yet (lump sum contract) — add an Extra Item first, or measure isn't applicable here.</div>` : ""}
       <div class="table-wrap mb-4"><table class="dtable"><thead><tr><th>BOQ Item</th><th>Row Unit</th><th>Nos</th><th>Length (m)</th><th>Breadth (m)</th><th>Height/Depth (m)</th><th>Factor</th><th>Qty</th><th></th></tr></thead>
       <tbody id="mbTbody">${rows.map(r=>mbRowHtml(r, boqOptions)).join("")}</tbody></table></div>
@@ -472,6 +511,41 @@
       const btn = e.target.closest("[data-rm-row]"); if(!btn) return;
       DB.mbRows.remove(btn.dataset.rmRow); renderMBContent(sheetId);
     });
+    // Excel paste: paste a copied range (Unit, Nos, Length, Breadth, Height, Factor columns)
+    // starting from whichever cell you paste into — extra rows are created automatically.
+    tbody.addEventListener("paste", e=>{
+      const input = e.target.closest("input[data-field]");
+      if(!input) return;
+      const text = (e.clipboardData||window.clipboardData).getData("text");
+      if(!text.includes("\t") && !text.includes("\n")) return;
+      e.preventDefault();
+      const grid = U.parsePastedTable(text);
+      const fields = ["unit","nos","length","breadth","height","factor"];
+      const startFieldIdx = fields.indexOf(input.dataset.field);
+      const trs = U.qsa("tr", tbody);
+      const startRowIdx = trs.indexOf(input.closest("tr"));
+      const dbRows = DB.mbRows.list(rr=>rr.mbSheetId===sheetId);
+      const defaultItem = boqOptions[0];
+      grid.forEach((rowVals, rOff)=>{
+        const rIdx = startRowIdx + rOff;
+        let row = dbRows[rIdx];
+        if(!row){
+          row = DB.mbRows.create({mbSheetId:sheetId, boqItemId:defaultItem?defaultItem.id:null, unit:defaultItem?defaultItem.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
+          dbRows.push(row);
+        }
+        const updated = Object.assign({}, row);
+        rowVals.forEach((val, cOff)=>{
+          const fIdx = startFieldIdx + cOff;
+          if(fIdx<0 || fIdx>=fields.length) return;
+          const f = fields[fIdx];
+          updated[f] = ["nos","length","breadth","height","factor"].includes(f) ? (+val||0) : val.trim();
+        });
+        updated.qty = (+updated.nos||0)*(+updated.length||1)*(+updated.breadth||1)*(+updated.height||1)*(+updated.factor||1);
+        DB.mbRows.update(row.id, updated);
+      });
+      renderMBContent(sheetId);
+      U.toast(`Pasted into ${grid.length} row(s).`, {type:"success"});
+    });
   }
   function mbRowHtml(r, boqOptions){
     return `<tr data-row="${r.id}">
@@ -482,7 +556,7 @@
       <td><input class="input" type="number" step="0.01" data-field="breadth" value="${r.breadth}" style="width:80px"></td>
       <td><input class="input" type="number" step="0.01" data-field="height" value="${r.height}" style="width:80px"></td>
       <td>
-        <select class="select factor-select"><option value="">Preset…</option>${FACTOR_PRESETS.map((p,i)=>`<option value="${i}">${p.label}</option>`).join("")}</select>
+        <select class="select factor-select"><option value="">Preset…</option>${factorPresetOptionsHtml()}</select>
         <input class="input mt-1" type="number" step="0.00001" data-field="factor" value="${r.factor}" style="width:90px">
       </td>
       <td class="mb-qty">${(r.qty||0).toFixed(3)}</td>
@@ -631,7 +705,7 @@
     document.getElementById("genericModalBody").innerHTML = `
       <p class="hint">Auto-picked previous approved bill amount: <b>${U.fmtINR(prevAmount)}</b></p>
       ${canItemWise ? `
-      <p class="hint mb-2">Claim against each BOQ item — enter a % complete (auto-computes cumulative qty) or type the cumulative measured quantity directly. This-bill qty/amount is the difference from the last billed cumulative.</p>
+      <p class="hint mb-2">Claim against each BOQ item — enter a % complete (auto-computes cumulative qty) or type the cumulative measured quantity directly. This-bill qty/amount is the difference from the last billed cumulative. You can paste a copied column of % values from Excel directly into the % Complete column below.</p>
       <div class="table-wrap mb-3"><table class="dtable"><thead><tr><th>Item</th><th>Unit</th><th>BOQ Qty</th><th>Rate</th><th>Prev. Cum. Qty</th><th>% Complete</th><th>Cum. Qty</th><th>This Bill Amt</th></tr></thead>
       <tbody id="rbItemsBody">${items.map(it=>{
         const rate = itemRate(it); const prevQty = cumulativeBilledQty(it.id);
@@ -670,6 +744,23 @@
         document.getElementById("rbTotalPreview").textContent = U.fmtINR(total);
       }
       tbody.addEventListener("input", recalc);
+      // Excel paste: paste a copied column of % values down the % Complete column.
+      tbody.addEventListener("paste", e=>{
+        const input = e.target.closest(".rb-pct");
+        if(!input) return;
+        const text = (e.clipboardData||window.clipboardData).getData("text");
+        if(!text.includes("\n") && !text.includes("\t")) return;
+        e.preventDefault();
+        const values = U.parsePastedTable(text).map(row=>row[0]);
+        const trs = U.qsa("tr", tbody);
+        const startIdx = trs.indexOf(input.closest("tr"));
+        values.forEach((val, i)=>{
+          const tr = trs[startIdx+i];
+          if(tr) tr.querySelector(".rb-pct").value = (val||"").replace(/[^\d.]/g,"");
+        });
+        recalc();
+        U.toast(`Pasted ${values.length} value(s) into % Complete.`, {type:"success"});
+      });
       recalc();
     }
 
