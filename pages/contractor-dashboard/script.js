@@ -32,10 +32,13 @@
       <div class="flex gap-2 items-center"><span class="badge ${map[b.status]||'badge-neutral'}">${b.status.replace(/_/g," ")}</span><a class="btn btn-sm btn-outline" href="../tender-detail/index.html?id=${t.id}">Open</a></div></div>`;
   }).join("") : `<div class="empty-state">You haven't submitted any bids yet. <a href="../contractor-tenders/index.html">Find tenders →</a></div>`;
 
-  document.getElementById("projectsList").innerHTML = projects.length ? projects.map(p=>`
-    <div class="proj-row"><div class="flex justify-between items-center mb-2"><b>${U.escapeHtml(p.name)}</b><span class="badge badge-success">${p.progressPct||0}%</span></div>
+  document.getElementById("projectsList").innerHTML = projects.length ? projects.map(p=>{
+    const h = U.projectHealth(p);
+    return `<div class="proj-row"><div class="flex justify-between items-center mb-2"><b>${U.escapeHtml(p.name)}</b><span class="badge badge-success">${p.progressPct||0}%</span></div>
     <div class="progress mb-2"><div class="progress-bar" style="width:${p.progressPct||0}%"></div></div>
-    <a class="btn btn-ghost btn-sm mt-2" href="../project-workspace/index.html?id=${p.id}">Open Workspace →</a></div>`).join("") : `<div class="empty-state">No active projects yet.</div>`;
+    <div class="flex justify-between text-muted" style="font-size:12px"><span>${h.totalDays!=null?h.remainingDays+'d left'+(h.overdue?' ⚠ overdue':''):'—'}</span><span>Balance: ${U.fmtINR(h.balanceAmount)}</span></div>
+    <a class="btn btn-ghost btn-sm mt-2" href="../project-workspace/index.html?id=${p.id}">Open Workspace →</a></div>`;
+  }).join("") : `<div class="empty-state">No active projects yet.</div>`;
 
   const upcoming = [];
   projects.forEach(p=> DB.ganttTasks.list(g=>g.projectId===p.id && g.progress<100).forEach(g=> upcoming.push({label:p.name+" — "+g.name, date:g.end})));

@@ -18,13 +18,20 @@
     document.getElementById("projectPicker").classList.remove("hidden");
     if(!isPM) document.getElementById("newExternalProjectLink").classList.add("hidden");
     const list = myProjects();
-    document.getElementById("pickerGrid").innerHTML = list.length ? list.map(p=>`
-      <div class="card card-hover">
+    document.getElementById("pickerGrid").innerHTML = list.length ? list.map(p=>{
+      const h = U.projectHealth(p);
+      return `<div class="card card-hover">
         <div class="flex justify-between items-start gap-2"><b>${U.escapeHtml(p.name)}</b>${p.external?'<span class="badge badge-accent">External</span>':''}</div>
         <div class="text-muted" style="font-size:12px">${p.district}, ${p.state}</div>
         <div class="progress mt-3 mb-2"><div class="progress-bar" style="width:${p.progressPct||0}%"></div></div>
-        <a class="btn btn-primary btn-sm w-full" href="?id=${p.id}">Open Workspace</a>
-      </div>`).join("") : `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🏗️</div>No projects yet — a project is created automatically once a Work Order is issued${isPM?', or create an External Project above':''}.</div>`;
+        <div class="flex justify-between text-muted" style="font-size:11px">
+          <span>Work: ${h.workPct}%</span>
+          <span>${h.totalDays!=null ? (h.remainingDays+'d left'+(h.overdue?' ⚠':'')) : '—'}</span>
+          <span>Bal: ${U.fmtINR(h.balanceAmount)}</span>
+        </div>
+        <a class="btn btn-primary btn-sm w-full mt-3" href="?id=${p.id}">Open Workspace</a>
+      </div>`;
+    }).join("") : `<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">🏗️</div>No projects yet — a project is created automatically once a Work Order is issued${isPM?', or create an External Project above':''}.</div>`;
     return;
   }
 
@@ -86,7 +93,27 @@
     const hindOpen = DB.hindrances.list(h=>h.projectId===project.id && h.status==="pending").length;
     const bills = DB.raBills.list(r=>r.projectId===project.id);
     const billed = bills.reduce((s,b)=>s+b.currentGrossAmount,0);
+    const health = U.projectHealth(project);
     document.getElementById("panelOverview").innerHTML = `
+      <div class="card mb-5">
+        <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">Project Health</h3>
+          ${health.overdue ? `<span class="badge badge-danger">⚠ Past end date, still in progress</span>` : ""}
+        </div>
+        <div class="grid grid-4">
+          <div><div class="text-muted" style="font-size:12px">Days Elapsed / Total</div><b>${health.totalDays!=null ? `${health.elapsedDays} / ${health.totalDays} days` : "—"}</b></div>
+          <div><div class="text-muted" style="font-size:12px">Days Remaining</div><b>${health.totalDays!=null ? health.remainingDays+" days" : "—"}</b></div>
+          <div><div class="text-muted" style="font-size:12px">Time Consumed</div><b>${health.totalDays!=null ? health.timeConsumedPct.toFixed(0)+"%" : "—"}</b></div>
+          <div><div class="text-muted" style="font-size:12px">Work Progress</div><b>${health.workPct}%</b></div>
+        </div>
+        ${health.totalDays!=null ? `<div class="progress mt-3"><div class="progress-bar" style="width:${health.timeConsumedPct}%;background:${health.overdue?'var(--sw-gradient-warm)':'var(--sw-gradient-brand)'}"></div></div><div class="text-muted mt-1" style="font-size:11px">Timeline consumed</div>` : ""}
+        <div class="divider"></div>
+        <div class="grid grid-3">
+          <div><div class="text-muted" style="font-size:12px">Contract Value</div><b>${U.fmtINR(health.contractValue)}</b></div>
+          <div><div class="text-muted" style="font-size:12px">Billed to Date</div><b>${U.fmtINR(health.billedAmount)}</b></div>
+          <div><div class="text-muted" style="font-size:12px">Balance</div><b>${U.fmtINR(health.balanceAmount)}</b></div>
+        </div>
+      </div>
       <div class="grid grid-4 mb-5">
         <div class="kpi-card card-gradient"><div class="kpi-icon">📋</div><div class="kpi-value">${tasks.length}</div><div class="kpi-label">Gantt Tasks</div></div>
         <div class="kpi-card card-gradient accent"><div class="kpi-icon">🚧</div><div class="kpi-value">${hindOpen}</div><div class="kpi-label">Open Hindrances</div></div>

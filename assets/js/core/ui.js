@@ -255,6 +255,15 @@
     });
   }
 
+  function mountFloatingClock(){
+    if(document.getElementById("floatingClock")) return;
+    const el = document.createElement("div");
+    el.id = "floatingClock";
+    el.className = "floating-clock no-print";
+    document.body.appendChild(el);
+    U().startClock(el);
+  }
+
   function mountShell(opts){
     const user = Auth().requireRole(opts.roles);
     if(!user) return null;
@@ -272,6 +281,7 @@
     mountCommandPalette(user.role);
     mountQuickCreate(user.role);
     mountHelpWidget(user);
+    mountFloatingClock();
 
     const notifBtn = document.getElementById("notifBtn");
     if(notifBtn) notifBtn.addEventListener("click", ()=>{ renderNotifPanel(user); toggleDropdown("notifPanel"); });

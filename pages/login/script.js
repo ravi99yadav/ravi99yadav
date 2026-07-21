@@ -111,6 +111,11 @@
 
   document.getElementById("loginHelpBtn").addEventListener("click", ()=> U.openModal("loginHelpModal"));
 
+  const clockEl = document.createElement("div");
+  clockEl.className = "floating-clock no-print";
+  document.body.appendChild(clockEl);
+  U.startClock(clockEl);
+
   U.bindModalDismiss();
   U.bindRipple();
   U.initTheme();

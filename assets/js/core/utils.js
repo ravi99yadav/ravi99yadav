@@ -51,6 +51,35 @@
     return fmtDate(d);
   }
 
+  /* ---------- Project health (timeline + financial snapshot) ---------- */
+  function projectHealth(project){
+    const DB = global.SW.DB;
+    const today = new Date();
+    const start = project.startDate ? new Date(project.startDate) : null;
+    const end = project.endDate ? new Date(project.endDate) : null;
+    let totalDays=null, elapsedDays=null, remainingDays=null, timeConsumedPct=null, overdue=false;
+    if(start && end){
+      totalDays = daysBetween(start,end);
+      const rawElapsed = daysBetween(start, today);
+      elapsedDays = Math.max(0, Math.min(totalDays, rawElapsed));
+      remainingDays = Math.max(0, totalDays - elapsedDays);
+      timeConsumedPct = totalDays>0 ? Math.min(100, (elapsedDays/totalDays)*100) : 0;
+      overdue = rawElapsed > totalDays && (project.progressPct||0) < 100;
+    }
+    let contractValue = project.contractValue || 0;
+    if(!contractValue && project.tenderId){
+      const loi = DB.lois.list(l=>l.tenderId===project.tenderId)[0];
+      if(loi) contractValue = loi.contractValue || 0;
+    }
+    const bills = DB.raBills.list(r=>r.projectId===project.id && r.status!=="rejected");
+    const billedAmount = bills.reduce((s,b)=>s+(b.currentGrossAmount||0),0);
+    const balanceAmount = Math.max(0, contractValue - billedAmount);
+    return {
+      totalDays, elapsedDays, remainingDays, timeConsumedPct, overdue,
+      workPct: project.progressPct||0, contractValue, billedAmount, balanceAmount
+    };
+  }
+
   /* ---------- Validators ---------- */
   const Validate = {
     email(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v||""); },
@@ -211,7 +240,7 @@
 
   global.SW = global.SW || {};
   global.SW.Utils = {
-    startClock, fmtDate, fmtDateTime, fmtINR, daysBetween, relativeTime,
+    startClock, fmtDate, fmtDateTime, fmtINR, daysBetween, relativeTime, projectHealth,
     Validate, validateForm, toast, confetti, openModal, closeModal, bindModalDismiss,
     bindRipple, initTheme, parsePastedTable, exportCSV, escapeHtml, debounce, qs, qsa, initTabs, DAY_NAMES
   };

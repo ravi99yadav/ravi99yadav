@@ -54,13 +54,15 @@
     </div>`;
   }).join("") : `<div class="empty-state">No tenders need attention right now. <a href="../tender-wizard/index.html">Create one →</a></div>`;
 
-  document.getElementById("projectsList").innerHTML = projects.length ? projects.map(p=>`
-    <div class="proj-row">
+  document.getElementById("projectsList").innerHTML = projects.length ? projects.map(p=>{
+    const h = U.projectHealth(p);
+    return `<div class="proj-row">
       <div class="flex justify-between items-center mb-2"><b>${U.escapeHtml(p.name)}</b><span class="badge badge-success">${p.progressPct||0}%</span></div>
       <div class="progress mb-2"><div class="progress-bar" style="width:${p.progressPct||0}%"></div></div>
-      <div class="flex justify-between text-muted" style="font-size:12px"><span>${p.district}, ${p.state}</span><span>Due ${U.fmtDate(p.endDate)}</span></div>
+      <div class="flex justify-between text-muted" style="font-size:12px"><span>${p.district}, ${p.state}</span><span>${h.totalDays!=null?h.remainingDays+'d left'+(h.overdue?' ⚠ overdue':''):'Due '+U.fmtDate(p.endDate)}</span><span>Bal: ${U.fmtINR(h.balanceAmount)}</span></div>
       <a class="btn btn-ghost btn-sm mt-2" href="../project-workspace/index.html?id=${p.id}">Open Workspace →</a>
-    </div>`).join("") : `<div class="empty-state">No active projects yet.</div>`;
+    </div>`;
+  }).join("") : `<div class="empty-state">No active projects yet.</div>`;
 
   const upcoming = [];
   tenders.forEach(t=>{ if(t.bidSubmissionDeadline) upcoming.push({label:t.title+" — bid deadline", date:t.bidSubmissionDeadline}); });

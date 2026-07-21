@@ -7,11 +7,14 @@
 
   document.getElementById("fRadius").addEventListener("input", e=> document.getElementById("radiusVal").textContent = e.target.value+" km around entered district");
 
+  // Note: phone/email are intentionally NOT included here — contact details
+  // only become visible after both sides complete the ₹99 contact unlock
+  // on a specific tender (see tender-detail.js).
   function getContractors(){
     const contractorUsers = DB.users.list(u=>u.role==="contractor" && u.status==="active");
     return contractorUsers.map(u=>{
       const company = DB.companies.list(c=>c.ownerId===u.id)[0] || {};
-      return Object.assign({ userId:u.id, name:u.name, phone:u.phone, email:u.email }, company);
+      return Object.assign({ userId:u.id, name:u.name }, company);
     });
   }
 

@@ -124,6 +124,10 @@
   window.SW.seed();
   SW.Utils.initTheme();
   document.getElementById("footYear").textContent = new Date().getFullYear();
+  const clockEl = document.createElement("div");
+  clockEl.className = "floating-clock no-print";
+  document.body.appendChild(clockEl);
+  SW.Utils.startClock(clockEl);
 </script>
 </body>
 </html>

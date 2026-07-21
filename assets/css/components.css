@@ -284,6 +284,18 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .unlock-price .old{text-decoration:line-through;opacity:.75;font-size:var(--fs-md);}
 .unlock-price .new{font-size:var(--fs-2xl);font-weight:800;}
 
+/* ---- Floating clock ---- */
+.floating-clock{
+  position:fixed;left:16px;bottom:16px;z-index:850;
+  background:var(--surface-solid);backdrop-filter:blur(12px);
+  border:1px solid var(--border);border-radius:var(--r-pill);
+  padding:8px 16px;box-shadow:var(--shadow-md);
+  font-size:12px;line-height:1.3;color:var(--text-muted);
+  display:flex;flex-direction:column;pointer-events:none;
+}
+.floating-clock b{color:var(--text);font-size:14px;font-weight:700;font-family:var(--font-display);}
+@media (max-width:640px){.floating-clock{left:10px;bottom:10px;padding:6px 12px;font-size:11px;}.floating-clock b{font-size:12px;}}
+
 /* ---- Global help FAB ---- */
 .help-fab{
   position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;
