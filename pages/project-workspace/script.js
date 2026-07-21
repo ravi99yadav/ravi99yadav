@@ -43,7 +43,9 @@
   const canRaiseSiteActions = !isPM || project.external;
 
   function renderHeader(){
+    const masterProject = project.masterProjectId ? DB.masterProjects.get(project.masterProjectId) : null;
     document.getElementById("projHeader").innerHTML = `
+      ${masterProject && isPM ? `<a class="badge badge-accent mb-2" style="display:inline-flex" href="../pm-projects/index.html">🏗️ Part of Project: ${U.escapeHtml(masterProject.name)}</a>` : ""}
       <div class="flex justify-between items-start" style="flex-wrap:wrap;gap:12px">
         <div><div class="flex items-center gap-2"><h1 style="margin:0">${U.escapeHtml(project.name)}</h1>${project.external?'<span class="badge badge-accent">External Project</span>':''}</div><p class="text-muted">${project.district}, ${project.state} · ${isPM?'Contractor':'Project Manager'}: ${U.escapeHtml(otherPartyName)} · ${U.fmtDate(project.startDate)} – ${U.fmtDate(project.endDate)}</p></div>
         <div style="min-width:220px"><div class="flex justify-between text-muted" style="font-size:12px"><span>Progress</span><span>${project.progressPct||0}%</span></div><div class="progress"><div class="progress-bar" style="width:${project.progressPct||0}%"></div></div></div>
@@ -69,12 +71,11 @@
     }
     return 0;
   }
-  function mbMeasuredQty(desc){
+  function mbMeasuredQty(boqItem){
+    if(!boqItem) return 0;
     const sheets = DB.mbSheets.list(m=>m.projectId===project.id).map(s=>s.id);
-    const target = (desc||"").trim().toLowerCase();
-    if(!target) return 0;
-    return DB.mbRows.list(r=>sheets.includes(r.mbSheetId) && (r.boqDesc||"").trim().toLowerCase()===target)
-      .reduce((s,r)=>s+(r.qty||0),0);
+    return DB.mbRows.list(r=>sheets.includes(r.mbSheetId) && r.boqItemId===boqItem.id)
+      .reduce((s,r)=>s+convertQtyToBoqUnit(r.qty||0, r.unit, boqItem.unit),0);
   }
   function cumulativeBilledQty(boqItemId, beforeBillId){
     const bills = DB.raBills.list(b=>b.projectId===project.id && b.status!=="rejected" && b.id!==beforeBillId).sort((a,b)=>new Date(a.billDate)-new Date(b.billDate));
@@ -377,7 +378,26 @@
   }
 
   /* ================= MB SHEET ================= */
-  const FACTOR_PRESETS = { "TMT/Steel (kg per m per mm² dia)":0.00785, "MS Pipe (per running m, approx)":2.5, "MS Plate (per sqm per mm thick)":7.85, "Concrete (no factor)":1, "Earthwork (no factor)":1, "Paint (no factor)":1 };
+  const FACTOR_PRESETS = [
+    { label:"No factor (1:1)", factor:1, unit:null },
+    { label:"TMT/Steel bar — weight (kg per running m; edit for your bar dia — 8mm≈0.395, 10mm≈0.617, 12mm≈0.888, 16mm≈1.578, 20mm≈2.466)", factor:0.395, unit:"kg" },
+    { label:"MS Pipe — weight (kg per running m, approx)", factor:2.5, unit:"kg" },
+    { label:"MS Plate — weight (kg per sqm per mm thick)", factor:7.85, unit:"kg" },
+    { label:"Binding wire — weight (kg per m, approx)", factor:0.015, unit:"kg" }
+  ];
+  function convertQtyToBoqUnit(qty, fromUnit, toUnit){
+    const f = (fromUnit||"").trim().toLowerCase(), t = (toUnit||"").trim().toLowerCase();
+    if(!f || !t || f===t) return qty;
+    const isKg = u => ["kg","kgs","kilogram","kilograms"].includes(u);
+    const isMT = u => ["mt","ton","tons","tonne","tonnes","metric ton","metric tons"].includes(u);
+    const isGram = u => ["g","gm","gms","gram","grams"].includes(u);
+    if(isKg(f) && isMT(t)) return qty/1000;
+    if(isGram(f) && isMT(t)) return qty/1000000;
+    if(isGram(f) && isKg(t)) return qty/1000;
+    if(isMT(f) && isKg(t)) return qty*1000;
+    if(isKg(f) && isGram(t)) return qty*1000;
+    return qty;
+  }
   function renderMB(){
     const sheets = DB.mbSheets.list(m=>m.projectId===project.id);
     const panel = document.getElementById("panelMB");
@@ -399,14 +419,20 @@
   }
   function renderMBContent(sheetId){
     const rows = DB.mbRows.list(r=>r.mbSheetId===sheetId);
+    const boqOptions = projectBoqItems();
     document.getElementById("mbContent").innerHTML = `
-      <p class="hint mb-2">💡 Multiple rows can share the same "Item / BOQ Description" — they'll sum automatically in the Abstract below. Use the Factor preset for Steel/TMT/Pipe/Plate to auto-fill the multiplying factor.</p>
-      <div class="table-wrap mb-4"><table class="dtable"><thead><tr><th>Item / BOQ Description</th><th>Unit</th><th>Nos</th><th>Length (m)</th><th>Breadth (m)</th><th>Height/Depth (m)</th><th>Factor</th><th>Qty</th><th></th></tr></thead>
-      <tbody id="mbTbody">${rows.map(r=>mbRowHtml(r)).join("")}</tbody></table></div>
-      <button class="btn btn-outline btn-sm mb-4" id="addMBRowBtn">+ Add Measurement Row</button>
-      <div class="card"><h3>Auto Abstract</h3><div id="mbAbstract"></div></div>`;
+      <p class="hint mb-2">💡 Every row measures against a specific BOQ item (official or an approved Extra Item) — pick it from the dropdown. Multiple rows against the same item sum together automatically in the Abstract below. Use a Factor preset for Steel/TMT/Pipe/Plate to auto-fill the multiplying factor and switch the row to a weight unit (kg) — the abstract converts kg → MT automatically when the BOQ item is billed in MT/Tons.</p>
+      ${!boqOptions.length ? `<div class="empty-state mb-3">This project has no BOQ items yet (lump sum contract) — add an Extra Item first, or measure isn't applicable here.</div>` : ""}
+      <div class="table-wrap mb-4"><table class="dtable"><thead><tr><th>BOQ Item</th><th>Row Unit</th><th>Nos</th><th>Length (m)</th><th>Breadth (m)</th><th>Height/Depth (m)</th><th>Factor</th><th>Qty</th><th></th></tr></thead>
+      <tbody id="mbTbody">${rows.map(r=>mbRowHtml(r, boqOptions)).join("")}</tbody></table></div>
+      <button class="btn btn-outline btn-sm mb-4" id="addMBRowBtn" ${!boqOptions.length?'disabled':''}>+ Add Measurement Row</button>
+      <div class="card"><h3>Auto Abstract (in each BOQ item's own unit)</h3><div id="mbAbstract"></div></div>`;
     renderAbstract(sheetId);
-    document.getElementById("addMBRowBtn").addEventListener("click", ()=>{ DB.mbRows.create({mbSheetId:sheetId, boqDesc:"", unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0}); renderMBContent(sheetId); });
+    document.getElementById("addMBRowBtn").addEventListener("click", ()=>{
+      const first = boqOptions[0];
+      DB.mbRows.create({mbSheetId:sheetId, boqItemId:first?first.id:null, unit:first?first.unit:"Cum", nos:1, length:0, breadth:0, height:0, factor:1, qty:0});
+      renderMBContent(sheetId);
+    });
     const tbody = document.getElementById("mbTbody");
     tbody.addEventListener("input", e=>{
       const tr = e.target.closest("tr"); if(!tr) return;
@@ -423,10 +449,23 @@
       renderAbstract(sheetId);
     });
     tbody.addEventListener("change", e=>{
+      const tr = e.target.closest("tr");
       if(e.target.classList.contains("factor-select")){
-        const tr = e.target.closest("tr");
+        const idx = e.target.value;
+        if(idx===""){ return; }
+        const preset = FACTOR_PRESETS[+idx];
         const factorInput = tr.querySelector('[data-field="factor"]');
-        if(e.target.value) { factorInput.value = e.target.value; factorInput.dispatchEvent(new Event("input", {bubbles:true})); }
+        factorInput.value = preset.factor;
+        factorInput.dispatchEvent(new Event("input", {bubbles:true}));
+        if(preset.unit){
+          const unitInput = tr.querySelector('[data-field="unit"]');
+          unitInput.value = preset.unit;
+          unitInput.dispatchEvent(new Event("input", {bubbles:true}));
+        }
+      }
+      if(e.target.classList.contains("boq-item-select")){
+        DB.mbRows.update(tr.dataset.row, { boqItemId: e.target.value });
+        renderAbstract(sheetId);
       }
     });
     tbody.addEventListener("click", e=>{
@@ -434,16 +473,16 @@
       DB.mbRows.remove(btn.dataset.rmRow); renderMBContent(sheetId);
     });
   }
-  function mbRowHtml(r){
+  function mbRowHtml(r, boqOptions){
     return `<tr data-row="${r.id}">
-      <td><input class="input" data-field="boqDesc" value="${SW.Utils.escapeHtml(r.boqDesc)}" style="min-width:180px"></td>
-      <td><input class="input" data-field="unit" value="${r.unit}" style="width:70px"></td>
+      <td><select class="select boq-item-select" style="min-width:200px">${boqOptions.map(it=>`<option value="${it.id}" ${r.boqItemId===it.id?'selected':''}>${U.escapeHtml(it.description)} (${it.unit})</option>`).join("")}</select></td>
+      <td><input class="input" data-field="unit" value="${SW.Utils.escapeHtml(r.unit||"")}" style="width:70px" title="Unit this row's Qty is measured in (auto-set by Factor preset for weight items)"></td>
       <td><input class="input" type="number" data-field="nos" value="${r.nos}" style="width:70px"></td>
       <td><input class="input" type="number" step="0.01" data-field="length" value="${r.length}" style="width:80px"></td>
       <td><input class="input" type="number" step="0.01" data-field="breadth" value="${r.breadth}" style="width:80px"></td>
       <td><input class="input" type="number" step="0.01" data-field="height" value="${r.height}" style="width:80px"></td>
       <td>
-        <select class="select factor-select"><option value="">Preset…</option>${Object.entries(FACTOR_PRESETS).map(([k,v])=>`<option value="${v}">${k}</option>`).join("")}</select>
+        <select class="select factor-select"><option value="">Preset…</option>${FACTOR_PRESETS.map((p,i)=>`<option value="${i}">${p.label}</option>`).join("")}</select>
         <input class="input mt-1" type="number" step="0.00001" data-field="factor" value="${r.factor}" style="width:90px">
       </td>
       <td class="mb-qty">${(r.qty||0).toFixed(3)}</td>
@@ -452,11 +491,15 @@
   }
   function renderAbstract(sheetId){
     const rows = DB.mbRows.list(r=>r.mbSheetId===sheetId);
+    const boqOptions = projectBoqItems();
     const groups = {};
     rows.forEach(r=>{
-      const key = (r.boqDesc||"Unnamed")+"__"+r.unit;
-      groups[key] = groups[key] || { desc:r.boqDesc||"Unnamed", unit:r.unit, qty:0 };
-      groups[key].qty += r.qty||0;
+      const boqItem = boqOptions.find(it=>it.id===r.boqItemId);
+      const key = r.boqItemId || "__unlinked";
+      const desc = boqItem ? boqItem.description : "(no BOQ item selected)";
+      const boqUnit = boqItem ? boqItem.unit : r.unit;
+      groups[key] = groups[key] || { desc, unit:boqUnit, qty:0 };
+      groups[key].qty += convertQtyToBoqUnit(r.qty||0, r.unit, boqUnit);
     });
     const list = Object.values(groups);
     document.getElementById("mbAbstract").innerHTML = list.length ? `<table class="dtable"><thead><tr><th>Item</th><th>Unit</th><th>Total Qty</th></tr></thead><tbody>${list.map(g=>`<tr><td>${U.escapeHtml(g.desc)}</td><td>${g.unit}</td><td><b>${g.qty.toFixed(3)}</b></td></tr>`).join("")}</tbody></table>` : `<p class="text-muted">Add measurement rows above to see the abstract.</p>`;
@@ -687,7 +730,7 @@
     const rows = items.map(it=>{
       const rate = itemRate(it);
       const boqValue = it.qty*rate;
-      const measured = mbMeasuredQty(it.description);
+      const measured = mbMeasuredQty(it);
       const billed = cumulativeBilledQty(it.id);
       const pctBilled = it.qty ? (billed/it.qty*100) : 0;
       const variance = measured - billed;
@@ -810,7 +853,7 @@
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
-    "MB Sheet: add measurement rows per item — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate. The abstract below sums all rows per item automatically.",
+    "MB Sheet: every row is measured against a specific BOQ item (official or an approved Extra Item) picked from a dropdown — Nos × Length × Breadth × Height × Factor computes quantity automatically, with ready factor presets for Steel/TMT/Pipe/Plate that also switch the row to a weight unit (kg). The abstract sums every row per BOQ item automatically and converts kg → MT when that item is billed in MT/Tons.",
     "RA Bill: for item-wise BOQs, claim against each item using % complete or a manual cumulative quantity — this-bill qty/amount is auto-computed from the last billed cumulative. Retention, advance recovery, GST and TDS are then calculated automatically. Project Managers approve or reject.",
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",

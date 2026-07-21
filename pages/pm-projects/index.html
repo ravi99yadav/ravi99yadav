@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>My Projects — SubletWorks.com</title>
+<meta name="description" content="Create a project once, then float as many tenders as needed against it — each with its own BOQ scope.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="flex justify-between items-center mb-5" style="flex-wrap:wrap;gap:10px">
+        <div><h1 style="margin:0">My Projects</h1><p class="text-muted" style="margin:4px 0 0">A Project groups everything happening at one site — float as many tenders under it as you need, each covering a different scope of BOQ items (e.g. Civil, Electrical, Plumbing), awarded to different contractors.</p></div>
+        <button class="btn btn-primary" id="newProjectBtn">+ New Project</button>
+      </div>
+
+      <div id="projectsList"></div>
+    </main>
+  </div>
+</div>
+
+<div class="modal-overlay" id="projectModal">
+  <div class="modal">
+    <div class="modal-head"><h3>New Project</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <div class="field"><label>Project Name</label><input class="input" id="mpName" placeholder="e.g. Sector 82 Residential Tower B"></div>
+      <div class="input-group">
+        <div class="field"><label>District</label><input class="input" id="mpDistrict"></div>
+        <div class="field"><label>State</label><input class="input" id="mpState"></div>
+      </div>
+      <div class="field"><label>Description (optional)</label><textarea class="textarea" id="mpDescription" placeholder="Overall site scope, notes for your own reference"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-primary" id="mpSaveBtn">Create Project</button></div>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="script.js"></script>
+</body>
+</html>

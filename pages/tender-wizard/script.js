@@ -28,6 +28,16 @@
     {description:"Electrical conduit wiring", unit:"Point"}
   ];
 
+  // ---------- Project (master project) selector ----------
+  const myMasterProjects = DB.masterProjects.list(mp=>mp.pmId===user.id && !mp.archived);
+  const masterProjectSelect = document.getElementById("fMasterProject");
+  myMasterProjects.forEach(mp=>{
+    const opt = document.createElement("option");
+    opt.value = mp.id; opt.textContent = mp.name + " (" + mp.district + ")";
+    masterProjectSelect.appendChild(opt);
+  });
+  masterProjectSelect.value = (tender && tender.masterProjectId) || params.get("masterProjectId") || "";
+
   // ---------- Prefill (edit mode) ----------
   if(tender){
     document.getElementById("fTitle").value = tender.title||"";
@@ -217,7 +227,9 @@
   }
   function renderReview(){
     const items = boqRows.filter(r=>r.description.trim());
+    const linkedMP = myMasterProjects.find(mp=>mp.id===document.getElementById("fMasterProject").value);
     document.getElementById("reviewSummary").innerHTML = `
+      <div class="review-row"><span>Project</span><b>${linkedMP ? U.escapeHtml(linkedMP.name) : 'Standalone (no project)'}</b></div>
       <div class="review-row"><span>Title</span><b>${U.escapeHtml(document.getElementById("fTitle").value)}</b></div>
       <div class="review-row"><span>Location</span><b>${U.escapeHtml(document.getElementById("fDistrict").value)}, ${U.escapeHtml(document.getElementById("fState").value)}</b></div>
       <div class="review-row"><span>Work Type</span><b>${document.getElementById("fWorkType").value}</b></div>
@@ -246,7 +258,8 @@
   // ---------- Save / Publish ----------
   function collectTenderData(status){
     return {
-      pmId:user.id, title:document.getElementById("fTitle").value.trim()||"Untitled Tender",
+      pmId:user.id, masterProjectId: document.getElementById("fMasterProject").value || null,
+      title:document.getElementById("fTitle").value.trim()||"Untitled Tender",
       workType:document.getElementById("fWorkType").value, district:document.getElementById("fDistrict").value.trim(),
       state:document.getElementById("fState").value.trim(), description:document.getElementById("fDescription").value.trim(),
       startDate:document.getElementById("fStartDate").value, endDate:document.getElementById("fEndDate").value,

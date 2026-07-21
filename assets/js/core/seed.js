@@ -64,9 +64,17 @@
 
     // ---- Tender 3: Already awarded -> becomes a live project ----
     const t3 = DB.tenders.create({ pmId:pm.id, title:"Interior & Civil Work – Sector 45 Villas Phase 1", workType:"Civil", district:"Gurugram", state:"Haryana", status:"awarded", estimatedValue:5400000, paymentTerms:"20% advance, RA bills monthly, 10% retention.", retentionPct:10, published:true, publishedAt:new Date(Date.now()-30*86400000).toISOString(), awardedTo:contractor.id });
-    ["Earthwork excavation","PCC bed concrete","Brick masonry work","Internal plastering","Flooring – vitrified tiles"].forEach((d,idx)=> DB.boqItems.create({ tenderId:t3.id, srNo:idx+1, description:d, unit:idx<2?"Cum":"Sqm", qty:[900,150,2200,4800,3600][idx] }));
+    const t3ItemDefs = [
+      { d:"Earthwork excavation", unit:"Cum", qty:900 },
+      { d:"PCC bed concrete", unit:"Cum", qty:150 },
+      { d:"Brick masonry work", unit:"Sqm", qty:2200 },
+      { d:"Internal plastering", unit:"Sqm", qty:4800 },
+      { d:"Flooring – vitrified tiles", unit:"Sqm", qty:3600 },
+      { d:"Steel reinforcement", unit:"MT", qty:8 }
+    ];
+    t3ItemDefs.forEach((it,idx)=> DB.boqItems.create({ tenderId:t3.id, srNo:idx+1, description:it.d, unit:it.unit, qty:it.qty }));
     const b3a = DB.bids.create({ tenderId:t3.id, contractorId:contractor.id, mode:"item-wise", status:"accepted", submittedAt:new Date(Date.now()-25*86400000).toISOString() });
-    const rates3a=[210,5400,540,185,720];
+    const rates3a=[210,5400,540,185,720,68000];
     DB.boqItems.list(i=>i.tenderId===t3.id).forEach((it,idx)=> DB.bidItems.create({ bidId:b3a.id, boqItemId:it.id, rate:rates3a[idx], amount:rates3a[idx]*it.qty }));
 
     DB.contactUnlocks.create({ tenderId:t3.id, pmPaid:true, contractorPaid:true, unlockedAt:new Date(Date.now()-24*86400000).toISOString(), amountEach:99 });
@@ -102,11 +110,14 @@
     cards.forEach(c=> DB.kanbanCards.create({ projectId:proj.id, columnId:cols[c.col].id, title:c.title, priority:c.priority, assignee:contractor.name, dueDate:"2026-08-10" }));
 
     const mb = DB.mbSheets.create({ projectId:proj.id, name:"MB-01 Foundation & Masonry", createdBy:contractor.id });
+    const t3Boq = DB.boqItems.list(i=>i.tenderId===t3.id);
+    const findItem = desc => t3Boq.find(i=>i.description===desc);
     const mbRowsData = [
-      { boqDesc:"PCC bed concrete", unit:"Cum", nos:1, length:30, breadth:5, height:1, factor:1 },
-      { boqDesc:"PCC bed concrete", unit:"Cum", nos:1, length:25, breadth:4, height:1, factor:1 },
-      { boqDesc:"Brick masonry work", unit:"Sqm", nos:1, length:60, breadth:1, height:18, factor:1 },
-      { boqDesc:"TMT reinforcement (calc)", unit:"MT", nos:1, length:1, breadth:1, height:1, factor:0.00785 }
+      { boqItemId:findItem("PCC bed concrete").id, unit:"Cum", nos:1, length:30, breadth:5, height:1, factor:1 },
+      { boqItemId:findItem("PCC bed concrete").id, unit:"Cum", nos:1, length:25, breadth:4, height:1, factor:1 },
+      { boqItemId:findItem("Brick masonry work").id, unit:"Sqm", nos:1, length:60, breadth:1, height:18, factor:1 },
+      // Steel measured & billed in kg here (200 bars of 16mm dia @ 12m, 1.578 kg/m) — the abstract auto-converts to MT (the BOQ item's own billing unit).
+      { boqItemId:findItem("Steel reinforcement").id, unit:"kg", nos:200, length:12, breadth:1, height:1, factor:1.578 }
     ];
     mbRowsData.forEach(r=> DB.mbRows.create(Object.assign({ mbSheetId:mb.id }, r, { qty:r.nos*r.length*r.breadth*r.height*r.factor })));
 

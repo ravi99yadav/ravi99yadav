@@ -14,6 +14,7 @@
       { icon:"grid", label:"Dashboard", href:"/pages/pm-dashboard/index.html", key:"pm-dashboard" },
       { icon:"search", label:"Search Contractors", href:"/pages/pm-contractors/index.html", key:"pm-contractors" },
       { section:"Tendering" },
+      { icon:"list", label:"My Projects", href:"/pages/pm-projects/index.html", key:"pm-projects" },
       { icon:"file-plus", label:"Create Tender", href:"/pages/tender-wizard/index.html", key:"tender-wizard" },
       { icon:"list", label:"My Tenders", href:"/pages/pm-tenders/index.html", key:"pm-tenders" },
       { section:"Delivery" },

@@ -1,0 +1,3 @@
+.mp-card{margin-bottom:18px;}
+.mp-subrow{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);gap:10px;flex-wrap:wrap;}
+.mp-subrow:last-child{border-bottom:none;}

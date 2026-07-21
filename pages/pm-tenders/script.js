@@ -17,8 +17,9 @@
       const bids = DB.bids.list(b=>b.tenderId===t.id);
       const daysFloated = t.publishedAt ? U.daysBetween(t.publishedAt, new Date()) : null;
       const staleAlert = (t.status==="published" && daysFloated!==null && daysFloated>=7);
+      const mp = t.masterProjectId ? DB.masterProjects.get(t.masterProjectId) : null;
       return `<tr>
-        <td><b>${U.escapeHtml(t.title)}</b>${staleAlert?` <span class="badge badge-warning" title="Floated ${daysFloated} days ago with no award yet">⏰ Floated ${daysFloated}d ago</span>`:""}<div class="text-muted" style="font-size:12px">${t.workType}</div></td>
+        <td><b>${U.escapeHtml(t.title)}</b>${staleAlert?` <span class="badge badge-warning" title="Floated ${daysFloated} days ago with no award yet">⏰ Floated ${daysFloated}d ago</span>`:""}<div class="text-muted" style="font-size:12px">${t.workType}${mp?` · 🏗️ ${U.escapeHtml(mp.name)}`:""}</div></td>
         <td>${U.escapeHtml(t.district)}, ${U.escapeHtml(t.state)}</td>
         <td><span class="badge ${statusBadge(t.status)}">${t.archived?"archived":t.status}</span></td>
         <td>${bids.length}</td>

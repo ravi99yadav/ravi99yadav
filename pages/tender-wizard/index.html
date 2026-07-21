@@ -35,6 +35,10 @@
       <!-- STEP 1 -->
       <section class="card step-panel" data-panel="1">
         <h3>Project &amp; Tender Details</h3>
+        <div class="field"><label>Project (optional)</label>
+          <select class="select" id="fMasterProject"><option value="">— No Project (standalone tender) —</option></select>
+          <p class="hint">Link this tender to a Project to group it with other tenders (different BOQ scopes, e.g. Civil + Electrical) floated for the same site. <a href="../pm-projects/index.html" target="_blank">Manage Projects →</a></p>
+        </div>
         <div class="input-group">
           <div class="field"><label>Tender Title</label><input class="input" id="fTitle" data-validate="required"><div class="error-msg">Title is required.</div></div>
           <div class="field"><label>Work Type / Trade</label>

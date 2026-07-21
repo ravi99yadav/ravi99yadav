@@ -8,7 +8,7 @@
 
   const STORAGE_KEY = "sw_db_v1";
   const COLLECTIONS = [
-    "users","companies","tenders","boqItems","bids","bidItems","comments",
+    "users","companies","masterProjects","tenders","boqItems","bids","bidItems","comments",
     "revisions","contactUnlocks","lois","workOrders","projects","ganttTasks",
     "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs",
     "hindrances","paymentRequests","marketplaceListings","marketplaceInquiries",
