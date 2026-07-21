@@ -29,6 +29,7 @@
         <button class="tab-btn" data-tab="analytics">Analytics</button>
         <button class="tab-btn" data-tab="fraud">Fraud Detection</button>
         <button class="tab-btn" data-tab="support">Support Tickets</button>
+        <button class="tab-btn" data-tab="hindrance">Hindrance Library</button>
         <button class="tab-btn" data-tab="audit">Audit Log</button>
       </div>
 
@@ -38,6 +39,7 @@
       <div class="tab-panel" data-tab-panel="analytics" id="panelAnalytics"></div>
       <div class="tab-panel" data-tab-panel="fraud" id="panelFraud"></div>
       <div class="tab-panel" data-tab-panel="support" id="panelSupport"></div>
+      <div class="tab-panel" data-tab-panel="hindrance" id="panelHindrance"></div>
       <div class="tab-panel" data-tab-panel="audit" id="panelAudit"></div>
     </main>
   </div>
@@ -48,6 +50,45 @@
     <div class="modal-head"><h3>Support Ticket</h3><button class="btn-icon" data-close-modal>✕</button></div>
     <div class="modal-body" id="ticketModalBody"></div>
     <div class="modal-foot" id="ticketModalFoot"></div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="hlModal">
+  <div class="modal modal-lg">
+    <div class="modal-head"><h3 id="hlModalTitle">Add Hindrance Library Entry</h3><button class="btn-icon" data-close-modal>✕</button></div>
+    <div class="modal-body">
+      <input type="hidden" id="hlId">
+      <div class="input-group">
+        <div class="field"><label>Category</label>
+          <select class="select" id="hlCategory">
+            <option>Civil</option><option>Electrical</option><option>Mechanical</option><option>Instrumentation</option>
+            <option>HVAC</option><option>Pipeline</option><option>Fire Fighting</option><option>Shutdown</option>
+            <option>Client</option><option>Weather</option><option>Approval</option><option>Drawing</option>
+            <option>Material</option><option>Equipment</option><option>Safety</option><option>Quality</option><option>Others</option>
+          </select>
+        </div>
+        <div class="field"><label>Title</label><input class="input" type="text" id="hlTitle" placeholder="e.g. Approved-for-Construction Drawing Delay"></div>
+      </div>
+      <div class="field"><label>Detailed Description</label><textarea class="textarea" id="hlDescription" rows="2"></textarea></div>
+      <div class="field"><label>Typical Root Cause</label><textarea class="textarea" id="hlRootCause" rows="2"></textarea></div>
+      <div class="field"><label>Typical Impact</label><textarea class="textarea" id="hlImpact" rows="2"></textarea></div>
+      <div class="field"><label>Typical Recovery Method</label><textarea class="textarea" id="hlRecoveryMethod" rows="2"></textarea></div>
+      <div class="field"><label>Evidence Required</label><input class="input" type="text" id="hlEvidenceRequired" placeholder="e.g. Drawing transmittal, RFI log, correspondence"></div>
+      <div class="input-group">
+        <div class="field"><label>Responsible Party</label>
+          <select class="select" id="hlResponsibleParty"><option>Client</option><option>PM</option><option>Contractor</option><option>Third Party</option><option>Force Majeure</option></select>
+        </div>
+        <div class="field"><label>Critical Path Impact</label>
+          <select class="select" id="hlCriticalPathImpact"><option value="true">Yes — typically critical</option><option value="false">No — typically non-critical</option></select>
+        </div>
+      </div>
+      <div class="input-group">
+        <div class="field"><label>Default Delay Range (days)</label><input class="input" type="text" id="hlDefaultDelayRangeDays" placeholder="e.g. 5-15"></div>
+        <div class="field"><label>Risk Level</label><select class="select" id="hlRiskLevel"><option>Low</option><option>Medium</option><option>High</option></select></div>
+      </div>
+      <div class="field"><label>Suggested Mitigation</label><textarea class="textarea" id="hlMitigation" rows="2"></textarea></div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-secondary" data-close-modal>Cancel</button><button class="btn btn-primary" id="hlSaveBtn">Save Entry</button></div>
   </div>
 </div>
 

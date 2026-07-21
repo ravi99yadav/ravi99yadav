@@ -311,6 +311,17 @@
     document.getElementById(id)?.classList.toggle("open");
   }
 
+  function render403(message, backHref, backLabel){
+    const target = document.querySelector(".app-content") || document.body;
+    target.innerHTML = `
+      <div class="empty-state" style="max-width:520px;margin:60px auto;">
+        <div class="es-icon" style="background:rgba(239,68,68,.12);color:var(--sw-danger);font-size:28px;">🔒</div>
+        <h2 style="color:var(--sw-danger);margin-bottom:6px;">403 — Access Denied</h2>
+        <p>${message||"You don't have permission to view this page or record."}</p>
+        ${backHref ? `<a class="btn btn-primary mt-3" href="${backHref}">${backLabel||"Go Back"}</a>` : ""}
+      </div>`;
+  }
+
   function helpSection(container, title, bullets){
     const el = document.createElement("details");
     el.className = "card mt-5 no-print";
@@ -320,5 +331,5 @@
   }
 
   global.SW = global.SW || {};
-  global.SW.UI = { mountShell, helpSection, ICONS, roleLabel };
+  global.SW.UI = { mountShell, helpSection, render403, ICONS, roleLabel };
 })(window);

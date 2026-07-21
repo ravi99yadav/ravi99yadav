@@ -7,9 +7,11 @@
   const DB = SW.DB, U = SW.Utils, isPM = user.role==="pm";
 
   const params = new URLSearchParams(location.search);
-  let project = params.get("id") ? DB.projects.get(params.get("id")) : null;
-  if(project && !(isPM ? project.pmId===user.id : project.contractorId===user.id)){
-    project = null; // not this user's project — fall back to the picker rather than leaking another company's data
+  const requestedId = params.get("id");
+  let project = requestedId ? DB.projects.get(requestedId) : null;
+  if(requestedId && project && !(isPM ? project.pmId===user.id : project.contractorId===user.id)){
+    SW.UI.render403("This project isn't available to your account.", "index.html", "Back to My Projects");
+    return;
   }
 
   function myProjects(){ return DB.projects.list(p=> (isPM ? p.pmId===user.id : p.contractorId===user.id) && !p.archived); }
@@ -1197,16 +1199,7 @@
   }
 
   /* ================= HINDRANCE ================= */
-  const HINDRANCE_TYPES = [
-    { name:"Material Delay", desc:"Required material not available or delivery delayed by supplier." },
-    { name:"Drawing Delay", desc:"Approved-for-construction drawings not issued or revised drawings awaited." },
-    { name:"Shutdown", desc:"Planned or unplanned shutdown of site/utility/plant halting work." },
-    { name:"Rain", desc:"Work stopped or slowed due to rain/weather." },
-    { name:"Power", desc:"Power outage affecting equipment or site operations." },
-    { name:"Permit", desc:"Statutory approval/permit/NOC pending from authority." },
-    { name:"Client Delay", desc:"Decision, handover, or access delayed by the client/PM side." },
-    { name:"Other", desc:"Any other hindrance not covered above — specify in description." }
-  ];
+  function hindranceLibrary(){ return DB.hindranceLibrary.list().sort((a,b)=>(a.category||"").localeCompare(b.category)||(a.title||"").localeCompare(b.title)); }
   function computeEOT(hindrances){
     const ranges = hindrances.filter(h=>h.delayFrom && h.delayTo).map(h=>({from:new Date(h.delayFrom), to:new Date(h.delayTo), items:[h]})).sort((a,b)=>a.from-b.from);
     const merged = [];
@@ -1220,33 +1213,112 @@
     const totalDays = merged.reduce((s,m)=> s + (U.daysBetween(m.from,m.to)+1), 0);
     return { totalDays, merged };
   }
+  function eotStatusBadge(status){
+    const map = { draft:"badge-neutral", submitted:"badge-warning", approved:"badge-success", rejected:"badge-danger", returned:"badge-info" };
+    return `<span class="badge ${map[status]||"badge-neutral"}">${status}</span>`;
+  }
   function renderHindrance(){
     const list = DB.hindrances.list(h=>h.projectId===project.id).sort((a,b)=>new Date(b.raisedAt)-new Date(a.raisedAt));
-    const qualifying = list.filter(h=> h.status==="acknowledged" || h.status==="resolved");
+    const qualifying = list.filter(h=> h.delayFrom && h.delayTo);
     const eot = computeEOT(qualifying);
+    const eotRequests = DB.eotRequests.list(r=>r.projectId===project.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
     const panel = document.getElementById("panelHindrance");
     panel.innerHTML = `
-      <div class="flex justify-between mb-3"><h3>Hindrance Register</h3>${canRaiseSiteActions?'<button class="btn btn-primary btn-sm" id="newHindBtn">+ Raise Hindrance</button>':''}</div>
+      <div class="flex justify-between mb-3"><h3>Hindrance Register</h3>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm" id="exportHindCsvBtn">⬇ Export CSV</button>
+          <button class="btn btn-outline btn-sm" id="printHindRegisterBtn">🖨 Print Register</button>
+          ${canRaiseSiteActions?'<button class="btn btn-primary btn-sm" id="newHindBtn">+ Raise Hindrance</button>':''}
+        </div>
+      </div>
       <div class="card mb-4" style="border-left:4px solid var(--sw-accent)">
         <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
-          <div><b>⏱ EOT (Extension of Time) Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Computed from acknowledged/resolved hindrances with a delay period set — overlapping dates across hindrances are merged so days are never double-counted.</p></div>
+          <div><b>⏱ EOT (Extension of Time) Overlap Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Live preview across all hindrances with a delay period set — overlapping dates are merged so days are never double-counted. Raise a formal EOT Request to submit this for approval.</p></div>
           <div class="flex gap-3 items-center">
-            <div style="text-align:center"><div style="font-size:22px;font-weight:800">${eot.totalDays}</div><div class="text-muted" style="font-size:11px">day(s) EOT</div></div>
-            ${isPM ? `<button class="btn btn-outline btn-sm" id="genEOTBtn" ${!eot.totalDays?'disabled':''}>Generate EOT Letter</button>` : ""}
+            <div style="text-align:center"><div style="font-size:22px;font-weight:800">${eot.totalDays}</div><div class="text-muted" style="font-size:11px">day(s) potential EOT</div></div>
+            <button class="btn btn-primary btn-sm" id="newEotReqBtn" ${!qualifying.length?'disabled title="Raise a hindrance with a delay period first"':''}>+ New EOT Request</button>
           </div>
         </div>
       </div>
+      <div class="card mb-4">
+        <div class="flex justify-between items-center mb-2"><h3>EOT Requests (${eotRequests.length})</h3>
+          <div class="flex gap-2"><button class="btn btn-outline btn-sm" id="exportEotCsvBtn">⬇ Export EOT Register CSV</button><button class="btn btn-outline btn-sm" id="printEotRegisterBtn">🖨 Print EOT Register</button></div>
+        </div>
+        ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Request No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Status</th><th>Revised Completion</th><th></th></tr></thead>
+        <tbody>${eotRequests.map(r=>`<tr>
+          <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b>${r.totalDays}</b></td>
+          <td>${eotStatusBadge(r.status)}</td><td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
+          <td class="flex gap-2">
+            <button class="btn btn-sm btn-outline" data-eot-view="${r.id}">View</button>
+            ${isPM && r.status==="submitted" ? `<button class="btn btn-sm btn-success" data-eot-approve="${r.id}">Approve</button><button class="btn btn-sm btn-outline" data-eot-return="${r.id}">Return</button><button class="btn btn-sm btn-danger" data-eot-reject="${r.id}">Reject</button>` : ""}
+            ${!isPM && (r.status==="draft"||r.status==="returned") ? `<button class="btn btn-sm btn-primary" data-eot-submit="${r.id}">Submit</button>` : ""}
+          </td>
+        </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">📄</div>No EOT requests raised yet.</div>`}
+      </div>
       ${list.length ? list.map(h=>`<div class="hindrance-card">
-        <div><div class="flex gap-2 items-center mb-1"><span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
-        <p style="font-size:13px;margin:0">${U.escapeHtml(h.description)}</p><span class="text-muted" style="font-size:11px">${U.relativeTime(h.raisedAt)}</span></div>
+        <div><div class="flex gap-2 items-center mb-1">${h.category?`<span class="badge badge-neutral">${U.escapeHtml(h.category)}</span>`:""}<span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.criticalPathImpact?`<span class="badge badge-danger">Critical Path</span>`:""}${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
+        <p style="font-size:13px;margin:0">${U.escapeHtml(h.description)}</p>
+        ${h.evidenceRequired?`<p class="text-muted mt-1" style="font-size:11px;margin:2px 0 0">📎 Evidence required: ${U.escapeHtml(h.evidenceRequired)}</p>`:""}
+        <span class="text-muted" style="font-size:11px">${U.relativeTime(h.raisedAt)}</span></div>
         ${isPM && h.status==="pending" ? `<div class="flex gap-2"><button class="btn btn-sm btn-outline" data-ack="${h.id}">Acknowledge</button><button class="btn btn-sm btn-success" data-resolve="${h.id}">Mark Resolved</button></div>` : ""}
         ${isPM && h.status==="acknowledged" ? `<button class="btn btn-sm btn-success" data-resolve="${h.id}">Mark Resolved</button>` : ""}
       </div>`).join("") : `<div class="empty-state"><div class="es-icon">🚧</div>No hindrances raised.</div>`}`;
+
+    document.getElementById("exportHindCsvBtn")?.addEventListener("click", ()=>{
+      U.exportCSV(`hindrance-register-${project.name}`,
+        ["Category","Type","Status","Critical Path","Delay From","Delay To","Days","Description","Evidence Required","Responsible Party","Raised"],
+        list.map(h=>[h.category||"", h.type, h.status, h.criticalPathImpact?"Yes":"No", h.delayFrom?U.fmtDate(h.delayFrom):"", h.delayTo?U.fmtDate(h.delayTo):"", h.delayFrom&&h.delayTo?U.daysBetween(h.delayFrom,h.delayTo)+1:"", h.description, h.evidenceRequired||"", h.responsibleParty||"", U.fmtDateTime(h.raisedAt)]));
+    });
+    document.getElementById("printHindRegisterBtn")?.addEventListener("click", ()=> printHindranceRegister(list));
+    document.getElementById("exportEotCsvBtn")?.addEventListener("click", ()=>{
+      U.exportCSV(`eot-register-${project.name}`,
+        ["Request No","Raised","Delay Events","Net EOT Days","Status","Original Completion","Revised Completion","PM Comment"],
+        eotRequests.map(r=>[r.requestNo, U.fmtDateTime(r.createdAt), (r.hindranceIds||[]).length, r.totalDays, r.status, r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"", r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"", r.pmComment||""]));
+    });
+    document.getElementById("printEotRegisterBtn")?.addEventListener("click", ()=> printEotRegister(eotRequests));
+    document.getElementById("newEotReqBtn")?.addEventListener("click", ()=> openEotRequestModal(qualifying));
+    panel.querySelectorAll("[data-eot-view]").forEach(b=> b.addEventListener("click", ()=> printEOTRequestLetter(DB.eotRequests.get(b.dataset.eotView))));
+    panel.querySelectorAll("[data-eot-submit]").forEach(b=> b.addEventListener("click", ()=>{
+      const r = DB.eotRequests.get(b.dataset.eotSubmit);
+      DB.eotRequests.update(r.id, { status:"submitted", submittedAt:DB.nowISO() });
+      DB.notifications.create({ userId:project.pmId, title:"EOT Request submitted", body:`${r.requestNo} submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+      U.toast("EOT Request submitted for approval.", {type:"success"}); renderHindrance();
+    }));
+    panel.querySelectorAll("[data-eot-approve]").forEach(b=> b.addEventListener("click", ()=>{
+      const r = DB.eotRequests.get(b.dataset.eotApprove);
+      DB.eotRequests.update(r.id, { status:"approved", decidedBy:user.id, decidedAt:DB.nowISO() });
+      if(r.revisedCompletionDate) DB.projects.update(project.id, { endDate:r.revisedCompletionDate });
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request approved", body:`${r.requestNo} approved — ${r.totalDays} day(s) granted on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+      U.toast("EOT Request approved.", {type:"success"}); renderHindrance();
+    }));
+    panel.querySelectorAll("[data-eot-return]").forEach(b=> b.addEventListener("click", ()=>{
+      const comment = prompt("Reason for returning this EOT Request for revision:");
+      if(comment===null) return;
+      const r = DB.eotRequests.get(b.dataset.eotReturn);
+      DB.eotRequests.update(r.id, { status:"returned", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request returned", body:`${r.requestNo} returned for revision on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+      U.toast("EOT Request returned for revision.", {type:"warning"}); renderHindrance();
+    }));
+    panel.querySelectorAll("[data-eot-reject]").forEach(b=> b.addEventListener("click", ()=>{
+      const comment = prompt("Reason for rejecting this EOT Request:");
+      if(comment===null) return;
+      const r = DB.eotRequests.get(b.dataset.eotReject);
+      DB.eotRequests.update(r.id, { status:"rejected", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request rejected", body:`${r.requestNo} rejected on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+      U.toast("EOT Request rejected.", {type:"danger"}); renderHindrance();
+    }));
+
     document.getElementById("newHindBtn")?.addEventListener("click", ()=>{
+      const lib = hindranceLibrary();
+      const categories = [...new Set(lib.map(l=>l.category))].sort();
       document.getElementById("genericModalTitle").textContent = "Raise Hindrance";
       document.getElementById("genericModalBody").innerHTML = `
-        <div class="field"><label>Type</label><select class="select" id="hType">${HINDRANCE_TYPES.map(t=>`<option value="${t.name}">${t.name}</option>`).join("")}</select><p class="hint mt-1" id="hTypeDesc">${HINDRANCE_TYPES[0].desc}</p></div>
-        <div class="field hidden" id="hOtherWrap"><label>Specify Other Type</label><input class="input" id="hOtherType" placeholder="e.g. Design Change"></div>
+        <div class="input-group">
+          <div class="field"><label>Category</label><select class="select" id="hCategory"><option value="">All Categories</option>${categories.map(c=>`<option value="${U.escapeHtml(c)}">${U.escapeHtml(c)}</option>`).join("")}</select></div>
+          <div class="field"><label>Hindrance Type</label><select class="select" id="hLib"></select></div>
+        </div>
+        <div class="card" id="hLibInfo" style="background:var(--surface-2);margin-bottom:14px;display:none"></div>
+        <div class="field hidden" id="hOtherWrap"><label>Specify Custom Type</label><input class="input" id="hOtherType" placeholder="e.g. Design Change"></div>
         <div class="input-group">
           <div class="field"><label>Delay Period From</label><input class="input" type="date" id="hFrom"></div>
           <div class="field"><label>Delay Period To</label><input class="input" type="date" id="hTo"></div>
@@ -1255,28 +1327,59 @@
         <div class="field"><label>Description</label><textarea class="textarea" id="hDesc" placeholder="e.g. Cement delivery delayed, material storage location not allocated…"></textarea></div>`;
       document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="hSave">Submit</button>`;
       U.openModal("genericModal");
-      document.getElementById("hType").addEventListener("change", e=>{
-        const t = HINDRANCE_TYPES.find(x=>x.name===e.target.value);
-        document.getElementById("hTypeDesc").textContent = t?t.desc:"";
-        document.getElementById("hOtherWrap").classList.toggle("hidden", e.target.value!=="Other");
+
+      function libOptionsFor(cat){
+        const filtered = cat ? lib.filter(l=>l.category===cat) : lib;
+        return filtered.map(l=>`<option value="${l.id}">${U.escapeHtml(l.category)} — ${U.escapeHtml(l.title)}</option>`).join("") + `<option value="__custom">+ Custom / Other (not in library)</option>`;
+      }
+      const hLibSel = document.getElementById("hLib");
+      hLibSel.innerHTML = libOptionsFor("");
+      let lastAutoDesc = "";
+      function applyLibSelection(){
+        const val = hLibSel.value;
+        const info = document.getElementById("hLibInfo");
+        document.getElementById("hOtherWrap").classList.toggle("hidden", val!=="__custom");
+        if(val==="__custom"){ info.style.display="none"; return; }
+        const l = lib.find(x=>x.id===val);
+        if(!l){ info.style.display="none"; return; }
+        info.style.display="block";
+        info.innerHTML = `
+          <p style="font-size:12px;margin:0 0 6px"><b>Typical Root Cause:</b> ${U.escapeHtml(l.rootCause||"—")}</p>
+          <p style="font-size:12px;margin:0 0 6px"><b>Typical Impact:</b> ${U.escapeHtml(l.impact||"—")}</p>
+          <p style="font-size:12px;margin:0 0 6px"><b>Recovery Method:</b> ${U.escapeHtml(l.recoveryMethod||"—")}</p>
+          <p style="font-size:12px;margin:0 0 6px"><b>Evidence Required:</b> ${U.escapeHtml(l.evidenceRequired||"—")}</p>
+          <p style="font-size:12px;margin:0"><b>Responsible Party:</b> ${U.escapeHtml(l.responsibleParty||"—")} &nbsp;|&nbsp; <b>Critical Path:</b> ${l.criticalPathImpact?"Yes":"No"} &nbsp;|&nbsp; <b>Risk:</b> ${U.escapeHtml(l.riskLevel||"—")}`;
+        const descEl = document.getElementById("hDesc");
+        if(!descEl.value.trim() || descEl.value===lastAutoDesc){ descEl.value = l.description||""; lastAutoDesc = l.description||""; }
+      }
+      document.getElementById("hCategory").addEventListener("change", e=>{
+        hLibSel.innerHTML = libOptionsFor(e.target.value);
+        applyLibSelection();
       });
+      hLibSel.addEventListener("change", applyLibSelection);
+      applyLibSelection();
+
       document.getElementById("hSave").addEventListener("click", ()=>{
         const desc = document.getElementById("hDesc").value.trim();
         if(!desc){ U.toast("Describe the hindrance.", {type:"danger"}); return; }
-        let type = document.getElementById("hType").value;
-        if(type==="Other"){
-          const other = document.getElementById("hOtherType").value.trim();
-          if(!other){ U.toast("Specify the \"Other\" hindrance type.", {type:"danger"}); return; }
-          type = other;
+        const libVal = hLibSel.value;
+        const l = libVal!=="__custom" ? lib.find(x=>x.id===libVal) : null;
+        let type;
+        if(l) type = l.title;
+        else {
+          type = document.getElementById("hOtherType").value.trim();
+          if(!type){ U.toast("Specify the custom hindrance type.", {type:"danger"}); return; }
         }
         const delayFrom = document.getElementById("hFrom").value, delayTo = document.getElementById("hTo").value;
         if(delayFrom && delayTo && new Date(delayTo) < new Date(delayFrom)){ U.toast("Delay 'To' date must be on/after the 'From' date.", {type:"danger"}); return; }
-        DB.hindrances.create({ projectId:project.id, type, description:desc, delayFrom:delayFrom||null, delayTo:delayTo||null, raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
+        DB.hindrances.create({ projectId:project.id, type, description:desc, delayFrom:delayFrom||null, delayTo:delayTo||null,
+          libraryId: l?l.id:null, category: l?l.category:"Others", criticalPathImpact: l?!!l.criticalPathImpact:false,
+          evidenceRequired: l?l.evidenceRequired:"", responsibleParty: l?l.responsibleParty:"", riskLevel: l?l.riskLevel:"",
+          raisedBy:user.id, status:"pending", raisedAt:DB.nowISO() });
         DB.notifications.create({ userId:project.pmId, title:"New hindrance raised", body:`${type} reported on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
         U.closeModal("genericModal"); renderHindrance(); U.toast("Hindrance submitted to Project Manager.", {type:"success"});
       });
     });
-    document.getElementById("genEOTBtn")?.addEventListener("click", ()=> printEOTLetter(eot));
     panel.addEventListener("click", e=>{
       const ack = e.target.closest("[data-ack]"); const res = e.target.closest("[data-resolve]");
       if(ack){ DB.hindrances.update(ack.dataset.ack, {status:"acknowledged"}); renderHindrance(); }
@@ -1284,38 +1387,143 @@
     });
   }
 
-  function printEOTLetter(eot){
+  function openEotRequestModal(qualifying, existingReq){
+    document.getElementById("genericModalTitle").textContent = existingReq ? "Revise EOT Request" : "New EOT Request";
+    document.getElementById("genericModalBody").innerHTML = `
+      <p class="hint mb-2">Select the delay events (hindrances) this EOT Request covers. Overlapping delay periods are merged automatically so no day is double-counted.</p>
+      <div class="table-wrap" style="max-height:260px;overflow-y:auto"><table class="dtable"><thead><tr><th></th><th>Type</th><th>Category</th><th>Period</th><th>Days</th><th>Critical</th></tr></thead>
+      <tbody>${qualifying.map(h=>`<tr>
+        <td><input type="checkbox" class="eotHindChk" value="${h.id}" ${existingReq && (existingReq.hindranceIds||[]).includes(h.id) ? "checked":""}></td>
+        <td>${U.escapeHtml(h.type)}</td><td>${U.escapeHtml(h.category||"—")}</td>
+        <td>${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)}</td><td>${U.daysBetween(h.delayFrom,h.delayTo)+1}</td>
+        <td>${h.criticalPathImpact?"Yes":"No"}</td>
+      </tr>`).join("")}</tbody></table></div>
+      <div class="card mt-3" id="eotPreview" style="background:var(--surface-2)"></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `
+      <button class="btn btn-outline" id="eotSaveDraftBtn">Save as Draft</button>
+      <button class="btn btn-primary" id="eotSubmitBtn">Submit for Approval</button>`;
+    U.openModal("genericModal");
+
+    function selectedHindrances(){
+      const ids = [...document.querySelectorAll(".eotHindChk:checked")].map(c=>c.value);
+      return qualifying.filter(h=>ids.includes(h.id));
+    }
+    function updatePreview(){
+      const sel = selectedHindrances();
+      const eot = computeEOT(sel);
+      const newEndDate = project.endDate && eot.totalDays ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
+      document.getElementById("eotPreview").innerHTML = sel.length ? `
+        <p style="font-size:13px;margin:0 0 6px"><b>Merged Delay Periods:</b></p>
+        ${eot.merged.map(m=>`<div style="font-size:12px;margin-bottom:4px">${U.fmtDate(m.from)} – ${U.fmtDate(m.to)} (${U.daysBetween(m.from,m.to)+1}d) — ${m.items.map(h=>U.escapeHtml(h.type)).join(", ")}</div>`).join("")}
+        <p style="font-size:13px;margin:8px 0 0"><b>Net EOT Days: ${eot.totalDays}</b> &nbsp;|&nbsp; Revised Completion: <b>${newEndDate?U.fmtDate(newEndDate):"—"}</b></p>
+      ` : `<p class="text-muted" style="font-size:12px;margin:0">Select at least one delay event to preview the overlap calculation.</p>`;
+    }
+    document.querySelectorAll(".eotHindChk").forEach(c=> c.addEventListener("change", updatePreview));
+    updatePreview();
+
+    function saveRequest(status){
+      const sel = selectedHindrances();
+      if(!sel.length){ U.toast("Select at least one delay event.", {type:"danger"}); return; }
+      const eot = computeEOT(sel);
+      const newEndDate = project.endDate ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d.toISOString().slice(0,10); })() : null;
+      const payload = {
+        hindranceIds: sel.map(h=>h.id),
+        mergedRanges: eot.merged.map(m=>({ from:m.from.toISOString().slice(0,10), to:m.to.toISOString().slice(0,10), items:m.items.map(h=>({type:h.type, category:h.category, description:h.description, criticalPathImpact:!!h.criticalPathImpact})) })),
+        totalDays: eot.totalDays,
+        originalCompletionDate: project.endDate||null,
+        revisedCompletionDate: newEndDate,
+        status
+      };
+      if(existingReq){
+        DB.eotRequests.update(existingReq.id, Object.assign({}, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
+      } else {
+        DB.eotRequests.create(Object.assign({ projectId:project.id, requestNo:"EOT-"+String(DB._store.eotRequests.length+1).padStart(3,"0"), raisedBy:user.id }, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
+      }
+      if(status==="submitted") DB.notifications.create({ userId:project.pmId, title:"EOT Request submitted", body:`New EOT Request submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
+      U.closeModal("genericModal"); renderHindrance();
+      U.toast(status==="submitted" ? "EOT Request submitted for approval." : "EOT Request saved as draft.", {type:"success"});
+    }
+    document.getElementById("eotSaveDraftBtn").addEventListener("click", ()=> saveRequest("draft"));
+    document.getElementById("eotSubmitBtn").addEventListener("click", ()=> saveRequest("submitted"));
+  }
+
+  function printRegisterWindow(title, headerHtml, tableHtml){
+    const w = window.open("", "_blank");
+    w.document.write(`<html><head><title>${title} — ${U.escapeHtml(project.name)}</title><style>
+      body{font-family:Arial,Helvetica,sans-serif;padding:24px;color:#111;}
+      h1{font-size:18px;margin:0 0 4px}
+      .meta{font-size:12px;color:#555;margin-bottom:16px}
+      table{width:100%;border-collapse:collapse;font-size:11px;}
+      th,td{border:1px solid #ccc;padding:5px 8px;text-align:left;vertical-align:top;}
+      th{background:#f3f4f6;}
+      .footer{margin-top:16px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+    </style></head><body>
+      <h1>${title}</h1>
+      <div class="meta">${headerHtml}</div>
+      ${tableHtml}
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>
+      <script>window.print()<\/script></body></html>`);
+    w.document.close();
+  }
+  function printHindranceRegister(list){
+    const rows = list.map(h=>`<tr><td>${U.escapeHtml(h.category||"—")}</td><td>${U.escapeHtml(h.type)}</td><td>${h.status}</td><td>${h.criticalPathImpact?"Yes":"No"}</td>
+      <td>${h.delayFrom&&h.delayTo?`${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)`:"—"}</td>
+      <td>${U.escapeHtml(h.description)}</td><td>${U.escapeHtml(h.evidenceRequired||"—")}</td></tr>`).join("");
+    printRegisterWindow("Hindrance Register",
+      `Project: ${U.escapeHtml(project.name)} &nbsp;|&nbsp; District: ${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)} &nbsp;|&nbsp; Total Hindrances: ${list.length}`,
+      `<table><thead><tr><th>Category</th><th>Type</th><th>Status</th><th>Critical</th><th>Delay Period</th><th>Description</th><th>Evidence Required</th></tr></thead><tbody>${rows||'<tr><td colspan="7">No hindrances raised.</td></tr>'}</tbody></table>`);
+  }
+  function printEotRegister(eotRequests){
+    const rows = eotRequests.map(r=>`<tr><td>${U.escapeHtml(r.requestNo)}</td><td>${U.fmtDate(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td>${r.totalDays}</td>
+      <td>${r.status}</td><td>${r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"—"}</td><td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
+      <td>${U.escapeHtml(r.pmComment||"—")}</td></tr>`).join("");
+    printRegisterWindow("EOT (Extension of Time) Register",
+      `Project: ${U.escapeHtml(project.name)} &nbsp;|&nbsp; Total EOT Requests: ${eotRequests.length} &nbsp;|&nbsp; Approved Days: ${eotRequests.filter(r=>r.status==='approved').reduce((s,r)=>s+r.totalDays,0)}`,
+      `<table><thead><tr><th>Request No</th><th>Raised</th><th>Delay Events</th><th>Net Days</th><th>Status</th><th>Original Completion</th><th>Revised Completion</th><th>PM Comment</th></tr></thead><tbody>${rows||'<tr><td colspan="8">No EOT requests raised.</td></tr>'}</tbody></table>`);
+  }
+
+  function printEOTRequestLetter(r){
     const pm = DB.users.get(project.pmId);
     const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
     const contractorName = project.external ? (project.externalContractorName||"External Contractor") : ((DB.users.get(project.contractorId)||{}).name||"—");
-    const newEndDate = project.endDate ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
-    const periodRows = eot.merged.map(m=>`
+    const periodRows = (r.mergedRanges||[]).map(m=>`
       <tr><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td>${U.daysBetween(m.from,m.to)+1}</td>
-      <td>${m.items.map(h=>`${U.escapeHtml(h.type)}: ${U.escapeHtml(h.description)}`).join("<br>")}</td></tr>`).join("");
+      <td>${m.items.map(h=>`<b>[${U.escapeHtml(h.category||"—")}] ${U.escapeHtml(h.type)}:</b> ${U.escapeHtml(h.description)}`).join("<br><br>")}</td></tr>`).join("");
+    const criticalCount = (r.mergedRanges||[]).reduce((s,m)=>s+m.items.filter(h=>h.criticalPathImpact).length,0);
     const w = window.open("", "_blank");
-    w.document.write(`<html><head><title>EOT Letter — ${U.escapeHtml(project.name)}</title><style>
+    w.document.write(`<html><head><title>${U.escapeHtml(r.requestNo)} — EOT Letter — ${U.escapeHtml(project.name)}</title><style>
       body{font-family:Arial,Helvetica,sans-serif;padding:30px;color:#111;}
       .letterhead{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #5B5CEB;padding-bottom:12px;margin-bottom:16px;}
       .brand{font-weight:800;font-size:20px;color:#5B5CEB;}
       .meta{text-align:right;font-size:12px;color:#555;}
       .title{text-align:center;font-size:18px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 20px;}
+      h4{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:#5B5CEB;margin:18px 0 6px;}
       table{width:100%;border-collapse:collapse;font-size:13px;margin-bottom:16px;}
-      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;}
+      th,td{border:1px solid #ccc;padding:6px 10px;text-align:left;vertical-align:top;}
       th{background:#f3f4f6;}
       .signoff{display:flex;justify-content:space-between;margin-top:60px;font-size:13px;}
       .signoff div{text-align:center;width:220px;border-top:1px solid #111;padding-top:6px;}
       .footer{margin-top:24px;font-size:10px;color:#888;display:flex;justify-content:space-between;border-top:1px solid #eee;padding-top:8px;}
+      .badge-inline{display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;color:#fff;background:${r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':r.status==='returned'?'#0284c7':'#d97706'}}
     </style></head><body>
       <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
       <div class="title">Extension of Time (EOT) Request</div>
-      <p style="font-size:13px"><b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(new Date())}</p>
-      <p>Based on the hindrances acknowledged/resolved against this project, a total Extension of Time of <b>${eot.totalDays} day(s)</b> is computed below. Overlapping hindrance periods have been merged so no delay day is counted more than once.</p>
-      <table><thead><tr><th>Delay Period</th><th>Days</th><th>Contributing Hindrance(s)</th></tr></thead><tbody>${periodRows}</tbody></table>
-      <table><tr><td style="width:260px"><b>Original Completion Date</b></td><td>${U.fmtDate(project.endDate)}</td></tr>
-      <tr><td><b>Total EOT Days</b></td><td>${eot.totalDays}</td></tr>
-      <tr><td><b>Revised Completion Date (proposed)</b></td><td>${newEndDate?U.fmtDate(newEndDate):"—"}</td></tr></table>
+      <p style="font-size:13px"><b>Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(r.createdAt)} &nbsp;|&nbsp; <b>Status:</b> <span class="badge-inline">${r.status}</span> &nbsp;|&nbsp; <b>Rev:</b> ${r.version||1}</p>
+      <h4>Background</h4>
+      <p>This request is submitted in accordance with the contract, seeking an Extension of Time on account of the delay event(s) described below, none of which are attributable to the Contractor's default. A total Extension of Time of <b>${r.totalDays} day(s)</b> is claimed, computed after merging overlapping delay periods so that no calendar day is counted more than once.</p>
+      <h4>Chronology of Delay Events</h4>
+      <table><thead><tr><th>Delay Period</th><th>Days</th><th>Cause &amp; Effect</th></tr></thead><tbody>${periodRows}</tbody></table>
+      <h4>Critical Path Impact</h4>
+      <p>${criticalCount>0 ? `${criticalCount} of the contributing delay event(s) are assessed as impacting the critical path, directly delaying the contract completion date on a day-for-day basis.` : `The contributing delay events are assessed as non-critical in isolation; the merged net impact above is nonetheless claimed as it affected the overall progress of works.`}</p>
+      <h4>Summary &amp; Requested Extension</h4>
+      <table><tr><td style="width:260px"><b>Original Completion Date</b></td><td>${r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"—"}</td></tr>
+      <tr><td><b>Total EOT Days Claimed</b></td><td>${r.totalDays}</td></tr>
+      <tr><td><b>Revised Completion Date (requested)</b></td><td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td></tr></table>
+      ${r.pmComment ? `<h4>Project Manager Remarks</h4><p>${U.escapeHtml(r.pmComment)}</p>` : ""}
+      <h4>Declaration</h4>
+      <p style="font-size:12px">The Contractor declares that the above delay events and periods are true and correct to the best of its knowledge, and supporting evidence is available on request.</p>
       <div class="signoff"><div>${U.escapeHtml(contractorName)}<br>Contractor</div><div>${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>EOT computed from ${eot.merged.reduce((s,m)=>s+m.items.length,0)} hindrance record(s)</span></div>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1}</span></div>
       <script>window.print()<\/script></body></html>`);
     w.document.close();
   }
@@ -1368,7 +1576,9 @@
     "Extra Items: raise work outside the original BOQ scope with a proposed rate and justification — once the Project Manager approves it (optionally adjusting the rate), it's automatically included in MB Sheet, RA Billing and Reconciliation.",
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",
     "DPR: log daily labour, equipment, weather and work done — useful for dispute resolution and progress tracking.",
-    "Hindrance: report blockers with a predefined type (or \"Other\" to specify your own) plus a description and an optional delay period. Once a Project Manager acknowledges or resolves a hindrance with dates set, it counts toward the EOT (Extension of Time) calculator, which merges overlapping delay periods so no day is double-counted, then generates a professional EOT letter proposing a revised completion date.",
+    "Hindrance: report blockers by picking a category and type from the admin-managed Hindrance Library (or \"Custom / Other\" to specify your own) — the library auto-fills typical root cause, impact, evidence required and responsible party.",
+    "EOT Requests: once one or more hindrances have a delay period set, raise a formal EOT Request by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft to keep editing, or Submit for Approval. The Project Manager can Approve (which updates the project's completion date), Return for Revision with a comment, or Reject. Every request can be printed as a professional EOT letter with full chronology and revision history.",
+    "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Payment Requests: a lightweight way to formally request release of funds against measured or billed work."
   ]);

@@ -16,7 +16,7 @@
   // Data isolation: a PM can only manage their own tenders; a contractor can only view
   // tenders that have actually been published (not another PM's private draft).
   if((isPM && tender.pmId!==user.id) || (!isPM && tender.status==="draft")){
-    document.querySelector(".app-content").innerHTML = `<div class="empty-state"><div class="es-icon">🔒</div>This tender isn't available to your account. <a href="${isPM?'../pm-tenders/index.html':'../contractor-tenders/index.html'}">Go back →</a></div>`;
+    SW.UI.render403("This tender isn't available to your account.", isPM?'../pm-tenders/index.html':'../contractor-tenders/index.html', "Go Back");
     return;
   }
   let selectedBidId = null;

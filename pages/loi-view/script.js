@@ -10,7 +10,7 @@
   const loi = DB.lois.get(params.get("id"));
   if(!loi){ document.querySelector(".app-content").innerHTML = `<div class="empty-state">LOI not found.</div>`; return; }
   if((isPM && loi.pmId!==user.id) || (!isPM && loi.contractorId!==user.id)){
-    document.querySelector(".app-content").innerHTML = `<div class="empty-state"><div class="es-icon">🔒</div>This LOI isn't available to your account.</div>`;
+    SW.UI.render403("This LOI isn't available to your account.");
     return;
   }
   const tender = DB.tenders.get(loi.tenderId);

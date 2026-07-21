@@ -11,7 +11,7 @@
     "users","companies","masterProjects","tenders","boqItems","bids","bidItems","comments",
     "revisions","contactUnlocks","lois","workOrders","projects","ganttTasks",
     "kanbanCards","kanbanColumns","mbSheets","mbRows","raBills","raBillItems","dprs","workPlans",
-    "hindrances","paymentRequests","marketplaceListings","marketplaceInquiries",
+    "hindrances","hindranceLibrary","eotRequests","paymentRequests","marketplaceListings","marketplaceInquiries",
     "notifications","auditLogs","savedTenders","files","shares","supportTickets","settings"
   ];
 
