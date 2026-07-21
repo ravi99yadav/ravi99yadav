@@ -132,6 +132,200 @@
       <div class="card"><h3>Recent Activity</h3><div class="timeline">${DB.auditFor("projects",project.id).slice(0,8).map(l=>`<div class="timeline-item"><div class="ti-time">${U.fmtDateTime(l.at)}</div>${l.action}</div>`).join("") || '<p class="text-muted">No activity recorded yet.</p>'}</div></div>`;
   }
 
+  /* ================= WBS (WORK BREAKDOWN STRUCTURE) ================= */
+  const WBS_TEMPLATE = [
+    { code:"1", name:"Pre-Construction", children:[
+      { code:"1.1", name:"Site Survey & Soil Investigation" },
+      { code:"1.2", name:"Statutory Approvals & NOCs" },
+      { code:"1.3", name:"Mobilization & Site Setup" },
+      { code:"1.4", name:"Temporary Facilities (Site Office, Store, Labour Camp)" }
+    ]},
+    { code:"2", name:"Earthwork", children:[
+      { code:"2.1", name:"Excavation" },
+      { code:"2.2", name:"Backfilling & Compaction" },
+      { code:"2.3", name:"Dewatering" }
+    ]},
+    { code:"3", name:"Foundation", children:[
+      { code:"3.1", name:"PCC (Plain Cement Concrete)" },
+      { code:"3.2", name:"Footing / Raft" },
+      { code:"3.3", name:"Foundation Waterproofing" },
+      { code:"3.4", name:"Plinth Beam" }
+    ]},
+    { code:"4", name:"Substructure", children:[
+      { code:"4.1", name:"Columns up to Plinth" },
+      { code:"4.2", name:"Plinth Filling" }
+    ]},
+    { code:"5", name:"Superstructure", children:[
+      { code:"5.1", name:"Columns" },
+      { code:"5.2", name:"Beams" },
+      { code:"5.3", name:"Slabs" },
+      { code:"5.4", name:"Staircase" }
+    ]},
+    { code:"6", name:"Masonry", children:[
+      { code:"6.1", name:"Brickwork / Blockwork — Internal" },
+      { code:"6.2", name:"Brickwork / Blockwork — External" }
+    ]},
+    { code:"7", name:"Plastering", children:[
+      { code:"7.1", name:"Internal Plastering" },
+      { code:"7.2", name:"External Plastering" }
+    ]},
+    { code:"8", name:"Waterproofing", children:[
+      { code:"8.1", name:"Terrace Waterproofing" },
+      { code:"8.2", name:"Toilet / Wet Area Waterproofing" }
+    ]},
+    { code:"9", name:"Flooring & Tiling", children:[
+      { code:"9.1", name:"Flooring" },
+      { code:"9.2", name:"Wall Tiling / Dado" },
+      { code:"9.3", name:"Skirting" }
+    ]},
+    { code:"10", name:"Electrical Works", children:[
+      { code:"10.1", name:"Conduiting & Wiring" },
+      { code:"10.2", name:"Panel & DB Installation" },
+      { code:"10.3", name:"Fixtures & Fittings" }
+    ]},
+    { code:"11", name:"Plumbing & Sanitary", children:[
+      { code:"11.1", name:"Internal Plumbing" },
+      { code:"11.2", name:"External Plumbing" },
+      { code:"11.3", name:"Sanitary Fixtures" }
+    ]},
+    { code:"12", name:"Fire Fighting", children:[
+      { code:"12.1", name:"Fire Fighting Piping" },
+      { code:"12.2", name:"Fire Fighting Equipment" }
+    ]},
+    { code:"13", name:"HVAC", children:[
+      { code:"13.1", name:"Ducting" },
+      { code:"13.2", name:"Equipment Installation" }
+    ]},
+    { code:"14", name:"Doors & Windows", children:[
+      { code:"14.1", name:"Door Frames & Shutters" },
+      { code:"14.2", name:"Windows & Glazing" }
+    ]},
+    { code:"15", name:"Painting & Finishing", children:[
+      { code:"15.1", name:"Internal Painting" },
+      { code:"15.2", name:"External Painting" },
+      { code:"15.3", name:"POP / False Ceiling" }
+    ]},
+    { code:"16", name:"External Development", children:[
+      { code:"16.1", name:"Compound Wall" },
+      { code:"16.2", name:"Roads & Pavements" },
+      { code:"16.3", name:"Landscaping" },
+      { code:"16.4", name:"External Drainage" }
+    ]},
+    { code:"17", name:"Testing & Commissioning", children:[
+      { code:"17.1", name:"Electrical Testing" },
+      { code:"17.2", name:"Fire Fighting Testing" },
+      { code:"17.3", name:"HVAC Testing" }
+    ]},
+    { code:"18", name:"Handover", children:[
+      { code:"18.1", name:"Snagging & De-snagging" },
+      { code:"18.2", name:"As-built Drawings" },
+      { code:"18.3", name:"Completion Certificate" },
+      { code:"18.4", name:"Final Handover" }
+    ]}
+  ];
+
+  function wbsCodeSortKey(code){
+    return code.split(".").map(Number).reduce((s,v,i)=> s + v/Math.pow(1000,i), 0);
+  }
+  function wbsNodesSorted(){
+    return DB.wbsNodes.list(n=>n.projectId===project.id).sort((a,b)=> wbsCodeSortKey(a.code) - wbsCodeSortKey(b.code));
+  }
+
+  function renderWBS(){
+    const nodes = wbsNodesSorted();
+    const panel = document.getElementById("panelWBS");
+    panel.innerHTML = `
+      <div class="flex justify-between mb-3" style="flex-wrap:wrap;gap:10px">
+        <p class="text-muted" style="margin:0;max-width:560px">Break the project down into a Work Breakdown Structure — insert the full standard template for a typical building project, then add or remove line items to match this project's scope.</p>
+        <div class="flex gap-2">
+          <button class="btn btn-outline btn-sm" id="exportWbsCsvBtn">⬇ Export CSV</button>
+          <button class="btn btn-outline btn-sm" id="printWbsBtn">🖨 Print</button>
+          <button class="btn btn-primary btn-sm" id="insertWbsTemplateBtn">+ Insert Standard WBS Template</button>
+          <button class="btn btn-outline btn-sm" id="addWbsNodeBtn">+ Add Item</button>
+        </div>
+      </div>
+      ${nodes.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th style="width:90px">Code</th><th>Work Item</th><th style="width:130px">Progress %</th><th style="width:70px"></th></tr></thead>
+      <tbody>${nodes.map(n=>{
+        const depth = n.code.split(".").length - 1;
+        return `<tr data-node="${n.id}">
+          <td>${U.escapeHtml(n.code)}</td>
+          <td style="padding-left:${16 + depth*22}px">${depth===0?`<b>${U.escapeHtml(n.name)}</b>`:U.escapeHtml(n.name)}</td>
+          <td><input class="input wbs-progress" type="number" min="0" max="100" value="${n.progressPct||0}" style="width:80px"></td>
+          <td><button class="btn-icon" data-rm-wbs="${n.id}" title="Remove">✕</button></td>
+        </tr>`;
+      }).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">🗂️</div>No WBS items yet — insert the standard template to get started, or add your own.</div>`}`;
+
+    document.getElementById("insertWbsTemplateBtn").addEventListener("click", ()=>{
+      if(nodes.length && !confirm("A WBS already exists for this project. Insert the standard template alongside it? (existing items are kept)")) return;
+      WBS_TEMPLATE.forEach(top=>{
+        const parent = DB.wbsNodes.create({ projectId:project.id, code:top.code, name:top.name, parentId:null, progressPct:0 });
+        (top.children||[]).forEach(c=> DB.wbsNodes.create({ projectId:project.id, code:c.code, name:c.name, parentId:parent.id, progressPct:0 }));
+      });
+      U.toast("Standard WBS template inserted.", {type:"success"});
+      renderWBS();
+    });
+    document.getElementById("addWbsNodeBtn").addEventListener("click", ()=> openWbsNodeModal());
+    document.getElementById("exportWbsCsvBtn").addEventListener("click", ()=>{
+      U.exportCSV(`wbs-${project.name}`, ["Code","Work Item","Progress %"], nodes.map(n=>[n.code, n.name, n.progressPct||0]));
+    });
+    document.getElementById("printWbsBtn").addEventListener("click", ()=> printWBS(nodes));
+
+    panel.querySelectorAll(".wbs-progress").forEach(inp=> inp.addEventListener("change", e=>{
+      const nodeId = e.target.closest("tr").dataset.node;
+      let val = +e.target.value||0; val = Math.max(0, Math.min(100, val));
+      DB.wbsNodes.update(nodeId, { progressPct: val });
+    }));
+    panel.querySelectorAll("[data-rm-wbs]").forEach(b=> b.addEventListener("click", ()=>{
+      const id = b.dataset.rmWbs;
+      const hasChildren = DB.wbsNodes.list(n=>n.parentId===id).length>0;
+      if(hasChildren && !confirm("This item has sub-items under it, which will also be removed. Continue?")) return;
+      DB.wbsNodes.list(n=>n.parentId===id).forEach(c=> DB.wbsNodes.remove(c.id));
+      DB.wbsNodes.remove(id);
+      renderWBS();
+    }));
+  }
+
+  function openWbsNodeModal(){
+    const nodes = wbsNodesSorted();
+    const topLevel = nodes.filter(n=>!n.parentId);
+    document.getElementById("genericModalTitle").textContent = "Add WBS Item";
+    document.getElementById("genericModalBody").innerHTML = `
+      <div class="field"><label>Parent Item</label><select class="select" id="wbsParent"><option value="">— Top Level —</option>${topLevel.map(n=>`<option value="${n.id}">${U.escapeHtml(n.code)} ${U.escapeHtml(n.name)}</option>`).join("")}</select></div>
+      <div class="field"><label>Name</label><input class="input" id="wbsName" placeholder="e.g. Basement Waterproofing"></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `<button class="btn btn-primary" id="wbsSaveBtn">Add</button>`;
+    U.openModal("genericModal");
+    document.getElementById("wbsSaveBtn").addEventListener("click", ()=>{
+      const name = document.getElementById("wbsName").value.trim();
+      if(!name){ U.toast("Enter a name.", {type:"danger"}); return; }
+      const parentId = document.getElementById("wbsParent").value || null;
+      let code;
+      if(parentId){
+        const parent = DB.wbsNodes.get(parentId);
+        const siblingCount = DB.wbsNodes.list(n=>n.parentId===parentId).length;
+        code = parent.code + "." + (siblingCount+1);
+      } else {
+        const topCodes = nodes.filter(n=>!n.parentId).map(n=>parseInt(n.code,10)).filter(n=>!isNaN(n));
+        code = String((topCodes.length ? Math.max(...topCodes) : 0) + 1);
+      }
+      DB.wbsNodes.create({ projectId:project.id, code, name, parentId, progressPct:0 });
+      U.closeModal("genericModal"); renderWBS();
+      U.toast("WBS item added.", {type:"success"});
+    });
+  }
+
+  function printWBS(nodes){
+    const rows = nodes.map(n=>{
+      const depth = n.code.split(".").length - 1;
+      return `<tr><td>${U.escapeHtml(n.code)}</td><td style="padding-left:${depth*20}px">${U.escapeHtml(n.name)}</td><td>${n.progressPct||0}%</td></tr>`;
+    }).join("");
+    const body = `
+      <div class="title">Work Breakdown Structure</div>
+      <p style="font-size:13px"><b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Total Items:</b> ${nodes.length}</p>
+      <table><thead><tr><th style="width:90px">Code</th><th>Work Item</th><th style="width:90px">Progress</th></tr></thead><tbody>${rows}</tbody></table>
+      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>`;
+    SW.UI.printDocument(`WBS — ${U.escapeHtml(project.name)}`, body);
+  }
+
   /* ================= GANTT ================= */
   function renderGantt(){
     const tasks = DB.ganttTasks.list(g=>g.projectId===project.id).sort((a,b)=> new Date(a.start)-new Date(b.start));
@@ -1989,7 +2183,7 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderWBS(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderHindrance(); renderPayments();
   U.initTabs();
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
@@ -1999,6 +2193,7 @@
   if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
   SW.UI.helpSection(document.querySelector(".app-content"), "Project Workspace", [
+    "WBS: break the project into a Work Breakdown Structure — insert the full standard 18-phase building-construction template (Pre-Construction through Handover) in one click, then add or remove line items to match this project's actual scope. Track % progress per item, export to CSV or print.",
     "Gantt: add tasks with start/end dates, mark critical-path items, and track % progress — project progress rolls up automatically.",
     "Kanban: drag cards between columns; add your own columns and cards with priority and due dates.",
     "Work Plan: either the Project Manager or the Contractor can plan ahead — define the labour (trade + count), material (item + qty + unit) and equipment needed for an upcoming date range. Link it to an existing Gantt task, or leave it unlinked and a Gantt timeline entry is created automatically from the plan's From/To dates — so raising a Work Plan is what actually decides and builds out the project's schedule. Both sides can update status (Planned/In Progress/Completed); paste Excel rows directly into the labour/material tables, or use \"Quick-fill from a Common Work Item\" to auto-calculate standard material and mandays for common items (Brickwork, PCC, RCC, Plastering, Flooring, Painting, Steel fixing) from a quantity.",
