@@ -21,6 +21,7 @@
       { icon:"kanban", label:"Project Workspace", href:"/pages/project-workspace/index.html", key:"project-workspace" },
       { section:"Tools" },
       { icon:"table", label:"Spreadsheets", href:"/pages/spreadsheets/index.html", key:"spreadsheets" },
+      { icon:"shield", label:"Compliance", href:"/pages/compliance/index.html", key:"compliance" },
       { section:"Marketplace" },
       { icon:"store", label:"Material Marketplace", href:"/pages/marketplace/index.html", key:"marketplace" }
     ],
@@ -32,6 +33,7 @@
       { icon:"kanban", label:"Project Workspace", href:"/pages/project-workspace/index.html", key:"project-workspace" },
       { section:"Tools" },
       { icon:"table", label:"Spreadsheets", href:"/pages/spreadsheets/index.html", key:"spreadsheets" },
+      { icon:"shield", label:"Compliance", href:"/pages/compliance/index.html", key:"compliance" },
       { section:"Marketplace" },
       { icon:"store", label:"Material Marketplace", href:"/pages/marketplace/index.html", key:"marketplace" }
     ],
@@ -50,6 +52,7 @@
     kanban:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>',
     store:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l1-5h16l1 5M4 9h16v10a1 1 0 01-1 1H5a1 1 0 01-1-1z"/><path d="M9 21v-6h6v6"/></svg>',
     table:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18M15 3v18"/></svg>',
+    shield:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2l8 3v6c0 5-3.4 8.5-8 11-4.6-2.5-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg>',
     bell:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 00-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 01-3.4 0"/></svg>',
     plus:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>',
     moon:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.8A9 9 0 1111.2 3 7 7 0 0021 12.8z"/></svg>',

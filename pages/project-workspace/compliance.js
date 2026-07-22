@@ -20,6 +20,9 @@
   function mount(container, ctx){
     const DB = global.SW.DB, U = global.SW.Utils;
     const project = ctx.project, user = ctx.user;
+    // Standalone mode (a general Compliance page not tied to any one project):
+    // registers span ALL of the user's team members & attendance instead of one project.
+    const standalone = !!ctx.standalone;
     const company = DB.companies.list(c=>c.ownerId===user.id)[0] || {};
     const employer = company.name || user.name || "—";
     const estAddress = [company.district||project.district, company.state||project.state].filter(Boolean).join(", ");
@@ -28,11 +31,11 @@
 
     /* -------- data sources -------- */
     function members(){
-      return DB.teamMembers.list(t=>t.ownerId===user.id && (t.projectIds||[]).includes(project.id))
+      return DB.teamMembers.list(t=>t.ownerId===user.id && (standalone || (t.projectIds||[]).includes(project.id)))
         .sort((a,b)=>(a.name||"").localeCompare(b.name||""));
     }
     function attSummary(memberId, period){
-      const recs = DB.teamAttendance.list(a=>a.ownerId===user.id && a.projectId===project.id && a.memberId===memberId && (!period || (a.date||"").slice(0,7)===period));
+      const recs = DB.teamAttendance.list(a=>a.ownerId===user.id && (standalone || a.projectId===project.id) && a.memberId===memberId && (!period || (a.date||"").slice(0,7)===period));
       const s = { present:0, half:0, ot:0, absent:0, manDays:0, byDay:{} };
       recs.forEach(r=>{
         if(r.status==="present") s.present++; else if(r.status==="half") s.half++;
@@ -199,13 +202,30 @@
           {k:"dol",l:"Date of Leaving Service",w:130},{k:"reason",l:"Reason for Leaving",w:150},{k:"remarks",l:"Remarks",w:120}
         ],
         auto:()=> []
+      },
+      XII: { formNo:"XII", monthly:false, title:"Register of Contractors", act:"Rule 74, Contract Labour (R&A) Central Rules, 1971 — maintained by the Principal Employer",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"contractor",l:"Name & Address of Contractor",w:230},{k:"nature",l:"Nature of Work",w:160},
+          {k:"location",l:"Location of Work",w:150},{k:"maxworkers",l:"Max. No. of Workmen Employed",w:150},
+          {k:"from",l:"Period of Contract — From",w:120},{k:"to",l:"To",w:100},{k:"remarks",l:"Remarks",w:130}
+        ],
+        auto:()=> []
+      },
+      BONUS: { formNo:"C", monthly:false, title:"Bonus Register (Bonus Paid to Employees)", act:"Rule 4(c), Payment of Bonus Rules, 1975 — Form C",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:150},{k:"designation",l:"Designation",w:120},{k:"days",l:"No. of Days Worked",w:110},
+          {k:"salary",l:"Salary / Wage (₹)",w:120},{k:"bonuspct",l:"Bonus % (min 8.33%)",w:120},{k:"bonus",l:"Bonus Payable (₹)",w:120},
+          {k:"deduction",l:"Deductions (₹)",w:110},{k:"net",l:"Net Bonus Paid (₹)",w:120},{k:"paydate",l:"Date of Payment",w:110}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name, designation:m.designation||m.skill||"" }))
       }
     };
     const FORM_ORDER = [
       ["A","Form A · Employee"],["B","Form B · Wage"],["C","Form C · Loan/Fines"],["D","Form D · Attendance"],
       ["E","Form E · Leave"],["OT","Overtime"],["ESIC","ESIC"],["EPF","EPF / ECR"],["ACC","Accident"],
       ["XIII","CLRA XIII · Workmen"],["XVI","CLRA XVI · Muster"],["XVII","CLRA XVII · Wages"],["XX","CLRA XX · Deductions"],
-      ["XXI","CLRA XXI · Fines"],["XXII","CLRA XXII · Advances"],["XXIII","CLRA XXIII · Overtime"],["EPF5","EPF 5 · Joins"],["EPF10","EPF 10 · Exits"]
+      ["XXI","CLRA XXI · Fines"],["XXII","CLRA XXII · Advances"],["XXIII","CLRA XXIII · Overtime"],
+      ["XII","CLRA XII · Contractors"],["BONUS","Bonus · Form C"],["EPF5","EPF 5 · Joins"],["EPF10","EPF 10 · Exits"]
     ];
 
     /* -------- per-employee declaration & nomination forms -------- */
@@ -310,11 +330,56 @@
             {k:"employer",l:"Name & Address of Employer / Establishment",auto:()=>employer},{k:"days90",l:"Worked 90+ Days in Last 12 Months?",type:"yesno"},
             {k:"bank",l:"Bank A/c No. & IFSC"},{k:"nominee",l:"Nominee Name & Relationship"}
           ]}
+        ] },
+      E1A: { formNo:"1A", title:"ESIC — Family Declaration Form (Form 1A)", act:"Regulation 15A, ESI (General) Regulations, 1950",
+        sections:[
+          { h:"Insured Person", fields:[
+            {k:"name",l:"Name of Insured Person",auto:m=>m.name},{k:"ip",l:"Insurance Number"}
+          ]},
+          { h:"Family Particulars", fields:[
+            {k:"f1name",l:"Name of Family Member"},{k:"f1rel",l:"Relationship with IP"},{k:"f1dob",l:"Date of Birth",type:"date"},
+            {k:"f1resides",l:"Residing with IP?",type:"yesno"},{k:"f1place",l:"If not, Place of Residence"},
+            {k:"f2name",l:"Name of Family Member"},{k:"f2rel",l:"Relationship with IP"},{k:"f2dob",l:"Date of Birth",type:"date"}
+          ]}
+        ] },
+      F3A: { formNo:"3A", title:"EPF — Member's Annual Contribution Card (Form 3A)", act:"Para 35 & 42, EPF Scheme 1952",
+        sections:[
+          { h:"Member Details", fields:[
+            {k:"name",l:"Name of Member",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},{k:"uan",l:"Account No. / UAN"},
+            {k:"year",l:"Financial Year"},{k:"designation",l:"Designation",auto:m=>m.designation||m.skill}
+          ]},
+          { h:"Annual Contribution", fields:[
+            {k:"wages",l:"Total EPF Wages for the Year (₹)"},{k:"empShare",l:"Worker's Share (₹)"},{k:"erShare",l:"Employer's Share — EPF (₹)"},
+            {k:"eps",l:"Pension Fund Contribution (₹)"},{k:"refund",l:"Refund of Advances (₹)"},{k:"remarks",l:"Remarks"}
+          ]}
+        ] },
+      F19: { formNo:"19", title:"EPF — Application for Final PF Settlement (Form 19)", act:"Para 69 & 72(5), EPF Scheme 1952",
+        sections:[
+          { h:"Member Details", fields:[
+            {k:"name",l:"Name of Member",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},{k:"uan",l:"UAN / PF Account Number"},
+            {k:"dob",l:"Date of Birth",type:"date"},{k:"doj",l:"Date of Joining",type:"date"},{k:"dol",l:"Date of Leaving Service",type:"date"},{k:"reason",l:"Reason for Leaving"}
+          ]},
+          { h:"Payment / KYC", fields:[
+            {k:"bank",l:"Bank Account Number"},{k:"ifsc",l:"IFSC Code"},{k:"pan",l:"PAN"},{k:"aadhaar",l:"Aadhaar Number"},
+            {k:"mode",l:"Mode of Remittance"},{k:"address",l:"Full Postal Address"}
+          ]}
+        ] },
+      F10C: { formNo:"10C", title:"EPF — Pension Withdrawal / Scheme Certificate (Form 10C)", act:"Para 14, Employees' Pension Scheme, 1995",
+        sections:[
+          { h:"Member Details", fields:[
+            {k:"name",l:"Name of Member",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},{k:"uan",l:"UAN / PF Account Number"},
+            {k:"dob",l:"Date of Birth",type:"date"},{k:"doj",l:"Date of Joining",type:"date"},{k:"dol",l:"Date of Leaving Service",type:"date"}
+          ]},
+          { h:"Claim & Bank", fields:[
+            {k:"claim",l:"Withdrawal Benefit or Scheme Certificate?"},{k:"bank",l:"Bank Account Number"},{k:"ifsc",l:"IFSC Code"},
+            {k:"aadhaar",l:"Aadhaar Number"},{k:"address",l:"Full Postal Address"}
+          ]}
         ] }
     };
     const FORM_DOC_ORDER = [
-      ["F11","EPF Form 11"],["F2","EPF Form 2"],["E1","ESIC Form 1"],["GF","Gratuity Form F"],
-      ["XIX","CLRA XIX · Wage Slip"],["E37","ESIC Form 37"],["BOCW1","BOCW Form I · Establishment"],["BOCWW","BOCW · Worker Reg."]
+      ["F11","EPF Form 11"],["F2","EPF Form 2"],["E1","ESIC Form 1"],["E1A","ESIC Form 1A"],["GF","Gratuity Form F"],
+      ["XIX","CLRA XIX · Wage Slip"],["E37","ESIC Form 37"],["F3A","EPF Form 3A"],["F19","EPF Form 19"],["F10C","EPF Form 10C"],
+      ["BOCW1","BOCW Form I · Establishment"],["BOCWW","BOCW · Worker Reg."]
     ];
 
     /* -------- persistence -------- */
@@ -325,6 +390,16 @@
 
     /* -------- render -------- */
     function esc(v){ return U.escapeHtml(v==null?"":String(v)); }
+    // Smart sizing so a printed/blank form gives each field the writing space it
+    // actually needs — wide fields (bank a/c, address) span full width, short
+    // fields (dates, gender) sit three-to-a-row, the rest two-to-a-row.
+    function fieldSize(fld){
+      if(fld.size) return fld.size;
+      const k=(fld.k||"").toLowerCase(), l=(fld.l||"");
+      if(/address|bank|ifsc|estname|principal|contractor|nominee|particulars|nature|purpose|offence|remarks|scheme/.test(k) || l.length>36) return "lg";
+      if(/dob|dol|doj|doa|date|gender|sex|age|share|days|rate|marital|continuing|resides|days90|prevepf|preveps|ppo|units|year|mode|claim/.test(k)) return "sm";
+      return "md";
+    }
     function currentRows(){
       const p = periodKey(state.formId);
       let rows = loadRows(state.formId, p);
@@ -411,18 +486,27 @@
     function printForm(blank){
       const form = FORMS[state.formId], p = periodKey(state.formId);
       const cols = form.columns(state.period);
-      const rows = blank ? Array.from({length: form.formId==="D"?18:18}, ()=>({})) : currentRows();
-      const bodyRows = (rows.length?rows:[{}]).map((r,ri)=>`<tr><td>${ri+1}</td>${cols.map(c=>`<td>${blank?"":esc(r[c.k])}</td>`).join("")}</tr>`).join("");
-      const body = `
+      // Blank templates get plenty of empty rows sized for handwriting; filled
+      // prints show the data but keep at least a page's worth of usable rows.
+      const rows = blank ? Array.from({length: 22}, ()=>({})) : currentRows();
+      const bodyRows = (rows.length?rows:[{}]).map((r,ri)=>`<tr class="${blank?'br':''}"><td>${ri+1}</td>${cols.map(c=>`<td>${blank?"":esc(r[c.k])}</td>`).join("")}</tr>`).join("");
+      const colGroup = `<colgroup><col style="width:34px">${cols.map(c=>`<col style="width:${c.w||90}px">`).join("")}</colgroup>`;
+      const style = `<style>
+        table.reg{table-layout:auto;}
+        table.reg th,table.reg td{white-space:normal;word-break:break-word;}
+        table.reg tbody tr.br td{height:32px;}
+        table.reg thead th{font-size:11px;}
+      </style>`;
+      const body = `${style}
         <div class="title">${form.formNo==="—"?"":"FORM "+form.formNo+" — "}${esc(form.title.toUpperCase())}</div>
         <p style="font-size:11px;text-align:center;margin:-8px 0 12px;color:#555">${esc(form.act||"")}</p>
         <table style="margin-bottom:10px"><tbody>
           <tr><th style="width:190px">Name &amp; Address of Establishment</th><td>${esc(employer)}${estAddress?", "+esc(estAddress):""}</td>
-              <th style="width:120px">Project / Site</th><td>${esc(project.name)}</td></tr>
+              <th style="width:120px">${standalone?"Scope":"Project / Site"}</th><td>${esc(project.name)}</td></tr>
           <tr><th>Nature of Work</th><td>Building &amp; Construction</td>
               <th>${form.monthly?"Period (Month)":"Register Date"}</th><td>${form.monthly?esc(state.period):esc(U.fmtDate(new Date()))}</td></tr>
         </tbody></table>
-        <table><thead><tr><th>Sr</th>${cols.map(c=>`<th>${esc(c.l)}</th>`).join("")}</tr></thead><tbody>${bodyRows}</tbody></table>
+        <table class="reg">${colGroup}<thead><tr><th>Sr</th>${cols.map(c=>`<th>${esc(c.l)}</th>`).join("")}</tr></thead><tbody>${bodyRows}</tbody></table>
         <div class="signoff"><div>Prepared By</div><div>Authorised Signatory<br>For ${esc(employer)}</div></div>
         <div class="footer"><span>Generated via SubletWorks.com${blank?" — BLANK TEMPLATE":""}</span><span>${esc(U.fmtDateTime(new Date()))}</span></div>`;
       global.SW.UI.printDocument(`${form.formNo==="—"?"":"Form "+form.formNo+" — "}${form.title}`, body, {landscape:true});
@@ -481,7 +565,7 @@
         <div class="card cmp-form" id="cmpForm">
           ${def.sections.map(s=>`
             <div class="cmp-form-section"><h4>${esc(s.h)}</h4>
-              <div class="cmp-form-grid">${s.fields.map(fld=>`<div class="field"><label>${esc(fld.l)}</label>${fieldCtrl(fld)}</div>`).join("")}</div>
+              <div class="cmp-form-grid">${s.fields.map(fld=>`<div class="field ${fieldSize(fld)==="lg"?"cmp-f-lg":""}"><label>${esc(fld.l)}</label>${fieldCtrl(fld)}</div>`).join("")}</div>
             </div>`).join("")}
           <p class="text-muted" style="font-size:12px;margin:10px 0 0">Declaration: I hereby declare that the particulars given above are true to the best of my knowledge and belief.</p>
         </div>`;
@@ -499,15 +583,25 @@
     function printFormDoc(blank){
       const def = FORM_DOCS[state.docFormId];
       const fields = blank ? {} : (docFieldsFor(state.docFormId, state.memberId) || {});
+      // Each field becomes a bordered box; its width comes from fieldSize() so a
+      // bank a/c or address gets a full-width writing area, a date only a third.
+      const style = `<style>
+        .fp-sec{margin:13px 0 5px;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:#333;border-bottom:1px solid #999;padding-bottom:3px;}
+        .fp-grid{display:flex;flex-wrap:wrap;gap:7px;}
+        .fp-f{border:1px solid #9aa3b0;border-radius:3px;padding:3px 8px 5px;min-height:42px;display:flex;flex-direction:column;box-sizing:border-box;}
+        .fp-f .lbl{font-size:8.5px;color:#556;text-transform:uppercase;letter-spacing:.02em;margin-bottom:4px;}
+        .fp-f .val{font-size:12.5px;min-height:22px;line-height:1.5;}
+        .fp-lg{flex:1 1 100%;} .fp-md{flex:1 1 calc(50% - 7px);} .fp-sm{flex:1 1 calc(33.333% - 7px);}
+      </style>`;
       const sections = def.sections.map(s=>`
-        <h4>${esc(s.h)}</h4>
-        <table class="kv"><tbody>${s.fields.map(fld=>`<tr><th style="width:280px">${esc(fld.l)}</th><td>${blank?"":esc(fields[fld.k]||"")}</td></tr>`).join("")}</tbody></table>`).join("");
-      const body = `
+        <div class="fp-sec">${esc(s.h)}</div>
+        <div class="fp-grid">${s.fields.map(fld=>`<div class="fp-f fp-${fieldSize(fld)}"><span class="lbl">${esc(fld.l)}</span><span class="val">${blank?"":esc(fields[fld.k]||"")}</span></div>`).join("")}</div>`).join("");
+      const body = `${style}
         <div class="title">FORM ${esc(def.formNo)} — ${esc(def.title.replace(/\s*\(.*\)$/,"").toUpperCase())}</div>
         <p style="font-size:11px;text-align:center;margin:-8px 0 12px;color:#555">${esc(def.act)}</p>
-        <table style="margin-bottom:10px"><tbody>
+        <table style="margin-bottom:6px"><tbody>
           <tr><th style="width:200px">Name &amp; Address of Establishment</th><td>${esc(employer)}${estAddress?", "+esc(estAddress):""}</td></tr>
-          <tr><th>Project / Site</th><td>${esc(project.name)}</td></tr>
+          <tr><th>${standalone?"Scope":"Project / Site"}</th><td>${esc(project.name)}</td></tr>
         </tbody></table>
         ${sections}
         <p style="font-size:12px;margin-top:14px">Declaration: I hereby declare that the particulars given above are true to the best of my knowledge and belief.</p>
