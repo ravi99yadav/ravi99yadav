@@ -129,11 +129,83 @@
           {k:"witness",l:"Witnesses",w:130},{k:"action",l:"Action Taken",w:150},{k:"reported",l:"Reported to ESIC (Y/N)",w:120}
         ],
         auto:()=> []
+      },
+      XIII: { formNo:"XIII", monthly:false, title:"Register of Workmen Employed by Contractor", act:"Rule 75, Contract Labour (Regulation & Abolition) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl. No.",w:60},{k:"name",l:"Name of Workman",w:150},{k:"age",l:"Age & Sex",w:80},{k:"guardian",l:"Father's / Husband's Name",w:150},
+          {k:"designation",l:"Nature of Employment / Designation",w:160},{k:"permaddr",l:"Permanent Home Address (Village, Tehsil, District)",w:210},
+          {k:"localaddr",l:"Local Address",w:140},{k:"doc",l:"Date of Commencement",w:120},{k:"sign",l:"Signature / Thumb",w:110},
+          {k:"dot",l:"Date of Termination",w:110},{k:"reason",l:"Reason for Termination",w:140},{k:"remarks",l:"Remarks",w:110}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name, designation:m.designation||m.skill||"", localaddr:m.phone?("Mob: "+m.phone):"" }))
+      },
+      XVI: { formNo:"XVI", monthly:true, title:"Muster Roll", act:"Rule 78(1)(a)(i), Contract Labour (R&A) Central Rules, 1971",
+        columns:(p)=>{ const cols=[{k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:130},{k:"guardian",l:"Father's/Husband's Name",w:150},{k:"sex",l:"Sex",w:50}];
+          const n=daysInMonth(p); for(let d=1;d<=n;d++) cols.push({k:"d"+d,l:String(d),w:26}); cols.push({k:"total",l:"Total",w:60}); return cols; },
+        auto:(p)=> members().map((m,i)=>{ const s=attSummary(m.id,p); const row={ code:i+1, name:m.name, total:s.manDays||"" }; Object.keys(s.byDay).forEach(d=> row["d"+d]=s.byDay[d]); return row; })
+      },
+      XVII: { formNo:"XVII", monthly:true, title:"Register of Wages", act:"Rule 78(1)(a)(i), Contract Labour (R&A) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:140},{k:"designation",l:"Designation / Nature of Work",w:150},{k:"days",l:"No. of Days Worked",w:90},
+          {k:"units",l:"Units of Work Done",w:100},{k:"rate",l:"Daily / Piece Rate",w:100},{k:"basic",l:"Basic Wages",w:90},{k:"da",l:"Dearness Allowance",w:100},
+          {k:"ot",l:"Overtime",w:75},{k:"other",l:"Other Cash Payments",w:110},{k:"total",l:"Total",w:90},{k:"ded",l:"Deductions",w:90},
+          {k:"net",l:"Net Amount Paid",w:100},{k:"paydate",l:"Date of Payment",w:100},{k:"sign",l:"Signature / Thumb",w:110}
+        ],
+        auto:(p)=> members().map((m,i)=>{ const s=attSummary(m.id,p); const gross=Math.round(s.manDays*(m.dailyRate||0));
+          return { code:i+1, name:m.name, designation:m.designation||m.skill||"", days:s.manDays||"", rate:m.dailyRate||"", basic:gross||"", total:gross||"", net:gross||"" }; })
+      },
+      XX: { formNo:"XX", monthly:false, title:"Register of Deductions for Damage or Loss", act:"Rule 78(1)(a)(ii), Contract Labour (R&A) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:150},{k:"designation",l:"Designation",w:120},{k:"particulars",l:"Particulars of Damage or Loss",w:200},
+          {k:"date",l:"Date of Damage / Loss",w:120},{k:"cause",l:"Whether Worker Showed Cause",w:160},{k:"amount",l:"Amount of Deduction (₹)",w:130},
+          {k:"inst",l:"No. of Installments",w:110},{k:"remarks",l:"Remarks",w:120}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name, designation:m.designation||m.skill||"" }))
+      },
+      XXI: { formNo:"XXI", monthly:false, title:"Register of Fines", act:"Rule 78(1)(a)(ii), Contract Labour (R&A) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:150},{k:"designation",l:"Designation",w:120},{k:"offence",l:"Act / Omission for which Fine Imposed",w:210},
+          {k:"date",l:"Date of Offence",w:110},{k:"cause",l:"Whether Showed Cause",w:150},{k:"amount",l:"Amount of Fine (₹)",w:110},
+          {k:"realised",l:"Date Fine Realised",w:120},{k:"remarks",l:"Remarks",w:120}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name, designation:m.designation||m.skill||"" }))
+      },
+      XXII: { formNo:"XXII", monthly:false, title:"Register of Advances", act:"Rule 78(1)(a)(ii), Contract Labour (R&A) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:150},{k:"designation",l:"Designation",w:120},{k:"date",l:"Date & Amount of Advance (₹)",w:160},
+          {k:"purpose",l:"Purpose",w:140},{k:"inst",l:"No. of Installments",w:110},{k:"repaid",l:"Date & Amount of Each Installment Repaid",w:210},
+          {k:"balance",l:"Balance (₹)",w:100},{k:"remarks",l:"Remarks",w:110}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name, designation:m.designation||m.skill||"" }))
+      },
+      XXIII: { formNo:"XXIII", monthly:true, title:"Register of Overtime", act:"Rule 78(1)(a)(iii), Contract Labour (R&A) Central Rules, 1971",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"name",l:"Name",w:150},{k:"designation",l:"Designation",w:120},{k:"otdays",l:"Days OT Worked",w:100},
+          {k:"othours",l:"Total OT Hours",w:100},{k:"normrate",l:"Normal Rate",w:90},{k:"otrate",l:"Overtime Rate",w:100},
+          {k:"otearn",l:"OT Earnings (₹)",w:110},{k:"paydate",l:"Date of OT Payment",w:120},{k:"remarks",l:"Remarks",w:110}
+        ],
+        auto:(p)=> members().map((m,i)=>{ const s=attSummary(m.id,p); return { code:i+1, name:m.name, designation:m.designation||m.skill||"", otdays:s.ot||"" }; })
+      },
+      EPF5: { formNo:"5", monthly:true, title:"EPF — Return of Employees Qualifying (New Joinees)", act:"Para 36(2)(a), EPF Scheme 1952 — filed monthly for employees qualifying for the first time",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"uan",l:"Account No. / UAN",w:130},{k:"name",l:"Name of Employee",w:160},{k:"guardian",l:"Father's / Husband's Name",w:160},
+          {k:"dob",l:"Date of Birth",w:100},{k:"sex",l:"Sex",w:60},{k:"doj",l:"Date of Joining / Eligibility",w:130},{k:"remarks",l:"Remarks",w:120}
+        ],
+        auto:()=> members().map((m,i)=>({ code:i+1, name:m.name }))
+      },
+      EPF10: { formNo:"10", monthly:true, title:"EPF — Return of Members Leaving Service", act:"Para 36(2)(a) & (b), EPF Scheme 1952 — filed monthly for members who left service",
+        columns:()=>[
+          {k:"code",l:"Sl.",w:46},{k:"uan",l:"Account No. / UAN",w:130},{k:"name",l:"Name of Member",w:160},{k:"guardian",l:"Father's / Husband's Name",w:160},
+          {k:"dol",l:"Date of Leaving Service",w:130},{k:"reason",l:"Reason for Leaving",w:150},{k:"remarks",l:"Remarks",w:120}
+        ],
+        auto:()=> []
       }
     };
     const FORM_ORDER = [
       ["A","Form A · Employee"],["B","Form B · Wage"],["C","Form C · Loan/Fines"],["D","Form D · Attendance"],
-      ["E","Form E · Leave"],["OT","Overtime"],["ESIC","ESIC"],["EPF","EPF / ECR"],["ACC","Accident"]
+      ["E","Form E · Leave"],["OT","Overtime"],["ESIC","ESIC"],["EPF","EPF / ECR"],["ACC","Accident"],
+      ["XIII","CLRA XIII · Workmen"],["XVI","CLRA XVI · Muster"],["XVII","CLRA XVII · Wages"],["XX","CLRA XX · Deductions"],
+      ["XXI","CLRA XXI · Fines"],["XXII","CLRA XXII · Advances"],["XXIII","CLRA XXIII · Overtime"],["EPF5","EPF 5 · Joins"],["EPF10","EPF 10 · Exits"]
     ];
 
     /* -------- per-employee declaration & nomination forms -------- */
@@ -192,9 +264,58 @@
             {k:"n1name",l:"Nominee Name"},{k:"n1rel",l:"Relationship with Employee"},{k:"n1age",l:"Age of Nominee"},
             {k:"n1share",l:"Proportion of Gratuity (%)"},{k:"n1address",l:"Nominee Address"}
           ]}
+        ] },
+      XIX: { formNo:"XIX", title:"CLRA — Wage Slip (Form XIX)", act:"Rule 78(1)(b), Contract Labour (R&A) Central Rules, 1971",
+        sections:[
+          { h:"Worker & Wage Details", fields:[
+            {k:"name",l:"Name of Workman",auto:m=>m.name},{k:"guardian",l:"S/o or W/o"},{k:"designation",l:"Designation / Nature of Work",auto:m=>m.designation||m.skill},
+            {k:"period",l:"Wage Period"},{k:"rate",l:"Rate of Daily Wages (₹)",auto:m=>m.dailyRate},{k:"days",l:"Total Days Worked"},
+            {k:"ot",l:"Overtime Hours / Amount"},{k:"gross",l:"Gross Wages (₹)"}
+          ]},
+          { h:"Deductions & Net", fields:[
+            {k:"pf",l:"PF Deduction (₹)"},{k:"esi",l:"ESI Deduction (₹)"},{k:"fines",l:"Fines (₹)"},{k:"advances",l:"Advances Recovered (₹)"},
+            {k:"other",l:"Other Deductions (₹)"},{k:"net",l:"Net Amount Paid (₹)"},{k:"paydate",l:"Date of Payment",type:"date"}
+          ]}
+        ] },
+      E37: { formNo:"37", title:"ESIC — Certificate of Employment (Form 37)", act:"Regulation 61, ESI (General) Regulations, 1950",
+        sections:[
+          { h:"Insured Person", fields:[
+            {k:"name",l:"Name of Insured Person",auto:m=>m.name},{k:"ip",l:"Insurance Number"},{k:"guardian",l:"Father's / Husband's Name"},
+            {k:"designation",l:"Designation",auto:m=>m.designation||m.skill}
+          ]},
+          { h:"Employment Certificate", fields:[
+            {k:"employedFrom",l:"Employed From (Date)",type:"date"},{k:"employedTo",l:"Employed Up To (Date)",type:"date"},
+            {k:"continuing",l:"Whether Still in Employment?",type:"yesno"},{k:"nature",l:"Nature of Work"},{k:"wages",l:"Monthly Wages (₹)",auto:m=>m.dailyRate?m.dailyRate*26:""}
+          ]}
+        ] },
+      BOCW1: { formNo:"I", title:"BOCW — Application for Registration of Establishment (Form I)", act:"Rule 23, BOCW (RE&CS) Central Rules, 1998",
+        sections:[
+          { h:"Establishment Details", fields:[
+            {k:"estname",l:"Name & Address of Establishment",auto:()=>employer+(estAddress?", "+estAddress:"")},{k:"employer",l:"Name of Employer",auto:()=>employer},
+            {k:"nature",l:"Nature of Building / Construction Work",auto:()=>"Building & Construction"},{k:"cost",l:"Estimated Cost of Construction (₹)"},
+            {k:"commence",l:"Date of Commencement",type:"date"},{k:"complete",l:"Likely Date of Completion",type:"date"}
+          ]},
+          { h:"Workers & Principal Employer", fields:[
+            {k:"maxworkers",l:"Maximum No. of Workers to be Employed"},{k:"principal",l:"Name & Address of Principal Employer"},{k:"contractor",l:"Name & Address of Contractor (if any)"}
+          ]}
+        ] },
+      BOCWW: { formNo:"—", title:"BOCW — Registration of Building Worker as Beneficiary", act:"Section 12, BOCW Act, 1996 / State Welfare Board Rules",
+        sections:[
+          { h:"Worker Details", fields:[
+            {k:"name",l:"Name of Construction Worker",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},{k:"dob",l:"Date of Birth / Age",type:"date"},
+            {k:"gender",l:"Gender"},{k:"aadhaar",l:"Aadhaar Number"},{k:"mobile",l:"Mobile Number",auto:m=>m.phone},
+            {k:"trade",l:"Nature of Work / Trade",auto:m=>m.skill||m.designation},{k:"address",l:"Permanent Address"}
+          ]},
+          { h:"Eligibility & Bank", fields:[
+            {k:"employer",l:"Name & Address of Employer / Establishment",auto:()=>employer},{k:"days90",l:"Worked 90+ Days in Last 12 Months?",type:"yesno"},
+            {k:"bank",l:"Bank A/c No. & IFSC"},{k:"nominee",l:"Nominee Name & Relationship"}
+          ]}
         ] }
     };
-    const FORM_DOC_ORDER = [["F11","EPF Form 11"],["F2","EPF Form 2"],["E1","ESIC Form 1"],["GF","Gratuity Form F"]];
+    const FORM_DOC_ORDER = [
+      ["F11","EPF Form 11"],["F2","EPF Form 2"],["E1","ESIC Form 1"],["GF","Gratuity Form F"],
+      ["XIX","CLRA XIX · Wage Slip"],["E37","ESIC Form 37"],["BOCW1","BOCW Form I · Establishment"],["BOCWW","BOCW · Worker Reg."]
+    ];
 
     /* -------- persistence -------- */
     function periodKey(formId){ return FORMS[formId].monthly ? state.period : ""; }
@@ -318,7 +439,7 @@
     }
     function seedDocFields(def, member){
       const f = {};
-      def.sections.forEach(s=> s.fields.forEach(fld=>{ if(fld.auto && member){ const v=fld.auto(member); if(v) f[fld.k]=v; } }));
+      def.sections.forEach(s=> s.fields.forEach(fld=>{ if(fld.auto){ try{ const v=fld.auto(member); if(v!=null && v!=="") f[fld.k]=v; }catch(e){} } }));
       return f;
     }
     function renderForms(){
