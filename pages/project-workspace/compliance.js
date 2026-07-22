@@ -27,7 +27,7 @@
     const employer = company.name || user.name || "—";
     const estAddress = [company.district||project.district, company.state||project.state].filter(Boolean).join(", ");
 
-    let state = { view:"registers", formId:"A", period: new Date().toISOString().slice(0,7), docFormId:"F11", memberId:"" };
+    let state = { view:"registers", formId:"A", period: new Date().toISOString().slice(0,7), docFormId:"F11", memberId:"", blankRows:25 };
 
     /* -------- data sources -------- */
     function members(){
@@ -425,9 +425,10 @@
         ${viewToggleHtml()}
         <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
           <h3 style="margin:0">Statutory Registers &amp; Forms</h3>
-          <div class="flex gap-2">
+          <div class="flex gap-2 items-center" style="flex-wrap:wrap">
             <button class="btn btn-outline btn-sm" id="cmpResetBtn" title="Rebuild this register from current team & attendance data">↻ Reset to actual</button>
-            <button class="btn btn-outline btn-sm" id="cmpBlankBtn">🖨 Print Blank</button>
+            <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--text-muted)">Blank rows <input type="number" id="cmpBlankRows" value="${state.blankRows}" min="1" max="500" class="input" style="width:64px;padding:4px 6px"></label>
+            <button class="btn btn-outline btn-sm" id="cmpBlankBtn" title="Print an empty register template with the number of rows set at left; the header repeats on every page">🖨 Print Blank</button>
             <button class="btn btn-primary btn-sm" id="cmpPrintBtn">🖨 Print Filled</button>
           </div>
         </div>
@@ -464,6 +465,7 @@
         const fresh = FORMS[state.formId].auto(p)||[]; saveRows(state.formId, p, fresh); render();
         U.toast("Register rebuilt from actual data.", {type:"success"});
       });
+      container.querySelector("#cmpBlankRows").addEventListener("change", e=>{ state.blankRows = Math.max(1, Math.min(500, +e.target.value||25)); e.target.value = state.blankRows; });
       container.querySelector("#cmpPrintBtn").addEventListener("click", ()=> printForm(false));
       container.querySelector("#cmpBlankBtn").addEventListener("click", ()=> printForm(true));
 
@@ -486,29 +488,37 @@
     function printForm(blank){
       const form = FORMS[state.formId], p = periodKey(state.formId);
       const cols = form.columns(state.period);
-      // Blank templates get plenty of empty rows sized for handwriting; filled
-      // prints show the data but keep at least a page's worth of usable rows.
-      const rows = blank ? Array.from({length: 22}, ()=>({})) : currentRows();
+      // Blank templates get exactly as many rows as the user asked for; they flow
+      // across pages and the whole header block (title + establishment + column
+      // headers) repeats at the top of every page via <thead>.
+      const n = blank ? Math.max(1, Math.min(500, state.blankRows||25)) : 0;
+      const rows = blank ? Array.from({length: n}, ()=>({})) : currentRows();
       const bodyRows = (rows.length?rows:[{}]).map((r,ri)=>`<tr class="${blank?'br':''}"><td>${ri+1}</td>${cols.map(c=>`<td>${blank?"":esc(r[c.k])}</td>`).join("")}</tr>`).join("");
+      const totalCols = cols.length + 1;
       const colGroup = `<colgroup><col style="width:34px">${cols.map(c=>`<col style="width:${c.w||90}px">`).join("")}</colgroup>`;
+      const periodLine = form.monthly ? `Period (Month): <b>${esc(state.period)}</b>` : `Register Date: <b>${esc(U.fmtDate(new Date()))}</b>`;
       const style = `<style>
-        table.reg{table-layout:auto;}
-        table.reg th,table.reg td{white-space:normal;word-break:break-word;}
+        table.reg{table-layout:auto;border-collapse:collapse;width:100%;}
+        table.reg th,table.reg td{white-space:normal;word-break:break-word;border:1px solid #444;}
+        table.reg thead{display:table-header-group;}
         table.reg tbody tr.br td{height:32px;}
-        table.reg thead th{font-size:11px;}
+        table.reg thead th.rt-title{font-size:15px;text-transform:uppercase;letter-spacing:.03em;padding:7px 4px;border-bottom:2px solid #000;}
+        table.reg thead th.rt-act{font-weight:400;font-size:10px;color:#555;padding:3px 4px;}
+        table.reg thead th.rt-est{font-weight:400;font-size:11px;text-align:left;padding:5px 8px;}
+        table.reg thead th.rt-col{font-size:11px;background:#f0f1f5;}
       </style>`;
       const body = `${style}
-        <div class="title">${form.formNo==="—"?"":"FORM "+form.formNo+" — "}${esc(form.title.toUpperCase())}</div>
-        <p style="font-size:11px;text-align:center;margin:-8px 0 12px;color:#555">${esc(form.act||"")}</p>
-        <table style="margin-bottom:10px"><tbody>
-          <tr><th style="width:190px">Name &amp; Address of Establishment</th><td>${esc(employer)}${estAddress?", "+esc(estAddress):""}</td>
-              <th style="width:120px">${standalone?"Scope":"Project / Site"}</th><td>${esc(project.name)}</td></tr>
-          <tr><th>Nature of Work</th><td>Building &amp; Construction</td>
-              <th>${form.monthly?"Period (Month)":"Register Date"}</th><td>${form.monthly?esc(state.period):esc(U.fmtDate(new Date()))}</td></tr>
-        </tbody></table>
-        <table class="reg">${colGroup}<thead><tr><th>Sr</th>${cols.map(c=>`<th>${esc(c.l)}</th>`).join("")}</tr></thead><tbody>${bodyRows}</tbody></table>
+        <table class="reg">${colGroup}
+          <thead>
+            <tr><th class="rt-title" colspan="${totalCols}">${form.formNo==="—"?"":"FORM "+esc(form.formNo)+" — "}${esc(form.title.toUpperCase())}${blank?" (BLANK)":""}</th></tr>
+            <tr><th class="rt-act" colspan="${totalCols}">${esc(form.act||"")}</th></tr>
+            <tr><th class="rt-est" colspan="${totalCols}">Establishment: <b>${esc(employer)}${estAddress?", "+esc(estAddress):""}</b> &nbsp;|&nbsp; ${standalone?"Scope":"Project / Site"}: <b>${esc(project.name)}</b> &nbsp;|&nbsp; ${periodLine}</th></tr>
+            <tr><th class="rt-col">Sr</th>${cols.map(c=>`<th class="rt-col">${esc(c.l)}</th>`).join("")}</tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
         <div class="signoff"><div>Prepared By</div><div>Authorised Signatory<br>For ${esc(employer)}</div></div>
-        <div class="footer"><span>Generated via SubletWorks.com${blank?" — BLANK TEMPLATE":""}</span><span>${esc(U.fmtDateTime(new Date()))}</span></div>`;
+        <div class="footer"><span>Generated via SubletWorks.com${blank?" — BLANK TEMPLATE ("+n+" rows)":""}</span><span>${esc(U.fmtDateTime(new Date()))}</span></div>`;
       global.SW.UI.printDocument(`${form.formNo==="—"?"":"Form "+form.formNo+" — "}${form.title}`, body, {landscape:true});
     }
 
