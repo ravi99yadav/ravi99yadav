@@ -88,7 +88,7 @@
     <div class="navbar-clock no-print" id="navbarClock" title="Current date & time"></div>
     <button class="btn btn-primary btn-sm no-print" id="quickCreateBtn">${ICONS.plus} Quick Create</button>
     <div style="position:relative">
-      <button class="icon-btn" id="notifBtn">${ICONS.bell}${notifCount?'<span class="dot"></span>':''}</button>
+      <button class="icon-btn" id="notifBtn">${ICONS.bell}${notifCount?`<span class="notif-bubble">${notifCount>99?"99+":notifCount}</span>`:''}</button>
       <div class="dropdown-panel" id="notifPanel"></div>
     </div>
     <button class="icon-btn" data-theme-toggle title="Toggle theme">${ICONS.moon}</button>
@@ -105,6 +105,20 @@
 
   function roleLabel(r){ return {pm:"Project Manager",contractor:"Contractor",admin:"Admin"}[r] || r; }
 
+  // Keeps the navbar bell's number bubble in sync with the actual unread count
+  // whenever a notification is read, so it never lags or gets stuck.
+  function updateNotifBubble(user){
+    const btn = document.getElementById("notifBtn");
+    if(!btn) return;
+    const count = (DB().notifications.list(n=>n.userId===user.id && !n.read)||[]).length;
+    let bubble = btn.querySelector(".notif-bubble");
+    if(count){
+      const label = count>99 ? "99+" : String(count);
+      if(!bubble){ bubble = document.createElement("span"); bubble.className = "notif-bubble"; btn.appendChild(bubble); }
+      bubble.textContent = label;
+    } else if(bubble){ bubble.remove(); }
+  }
+
   function renderNotifPanel(user){
     const panel = document.getElementById("notifPanel");
     const items = DB().notifications.list(n=>n.userId===user.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt)).slice(0,20);
@@ -118,13 +132,13 @@
     document.getElementById("markAllReadBtn")?.addEventListener("click", ()=>{
       items.forEach(n=>{ if(!n.read) DB().notifications.update(n.id, {read:true}); });
       renderNotifPanel(user);
-      document.getElementById("notifBtn")?.querySelector(".dot")?.remove();
+      updateNotifBubble(user);
     });
     panel.querySelectorAll("[data-notif-id]").forEach(el=>{
       el.addEventListener("click", ()=>{
         const n = DB().notifications.get(el.dataset.notifId);
         if(!n) return;
-        if(!n.read) DB().notifications.update(n.id, {read:true});
+        if(!n.read){ DB().notifications.update(n.id, {read:true}); updateNotifBubble(user); }
         if(n.link) location.href = rp(n.link);
         else renderNotifPanel(user);
       });
@@ -298,6 +312,9 @@
 
     const notifBtn = document.getElementById("notifBtn");
     if(notifBtn) notifBtn.addEventListener("click", ()=>{ renderNotifPanel(user); toggleDropdown("notifPanel"); });
+    // Keep the unread-count bubble live if a notification is created while this
+    // page is open (e.g. another action on the same page triggers one).
+    global.addEventListener("sw:db:changed", ()=> updateNotifBubble(user));
     const profileBtn = document.getElementById("profileBtn");
     if(profileBtn) profileBtn.addEventListener("click", ()=> toggleDropdown("profilePanel"));
     document.addEventListener("click", e=>{

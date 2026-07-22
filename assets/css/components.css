@@ -218,6 +218,7 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .icon-btn{width:38px;height:38px;border-radius:var(--r-md);display:flex;align-items:center;justify-content:center;background:var(--surface-2);border:1px solid var(--border);position:relative;transition:background var(--t-fast);}
 .icon-btn:hover{background:var(--surface);}
 .icon-btn .dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--sw-danger);border:2px solid var(--surface-solid);}
+.icon-btn .notif-bubble{position:absolute;top:-5px;right:-5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:var(--sw-danger);color:#fff;font-size:10px;font-weight:800;line-height:17px;text-align:center;border:2px solid var(--surface-solid);box-shadow:0 1px 3px rgba(0,0,0,.25);}
 .avatar{width:38px;height:38px;border-radius:50%;background:var(--sw-gradient-accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:var(--fs-sm);flex:none;}
 
 /* ---- Dropdown / Notification / Command palette ---- */
