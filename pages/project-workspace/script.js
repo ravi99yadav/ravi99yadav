@@ -2090,13 +2090,16 @@
       </div>
       <div class="card mb-4" style="border-left:4px solid var(--sw-accent)">
         <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
-          <div><b>⏱ EOT Overlap Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Merges every delay event that has a period set so no calendar day is double-counted. Raise a formal claim to submit the pool (or any subset) for approval.</p></div>
-          <button class="btn btn-primary btn-sm" id="newEotReqBtn" ${!qualifying.length?'disabled title="Raise a hindrance with a delay period first, on the Hindrance tab"':''}>+ New EOT Claim</button>
+          <div><b>⏱ EOT Overlap Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Merges every delay event that has a period set so no calendar day is double-counted. Raise from existing hindrances, or build a claim manually with your own delay periods and reasons.</p></div>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" id="newManualEotBtn">+ Manual EOT Claim</button>
+            <button class="btn btn-primary btn-sm" id="newEotReqBtn" ${!qualifying.length?'disabled title="Raise a hindrance with a delay period first, on the Hindrance tab"':''}>+ From Hindrances</button>
+          </div>
         </div>
       </div>
       ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Claim No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Progress</th><th>Revised Completion</th><th></th></tr></thead>
       <tbody>${eotRequests.map((r,ri)=>`<tr class="row-enter" style="animation-delay:${ri*40}ms">
-        <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b class="eot-days-counter" data-target="${r.totalDays}">0</b></td>
+        <td>${U.escapeHtml(r.requestNo)}${r.isManual?' <span class="badge badge-neutral" style="font-size:9.5px;vertical-align:middle">Manual</span>':""}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.mergedRanges||[]).reduce((s,m)=>s+m.items.length,0) || (r.hindranceIds||[]).length}</td><td><b class="eot-days-counter" data-target="${r.totalDays}">0</b></td>
         <td>${eotStepper(r.status)} ${eotStatusBadge(r.status)}${r.pmComment ? `<div class="text-muted mt-1" style="font-size:11px;max-width:220px">💬 ${U.escapeHtml(r.pmComment)}</div>` : ""}</td>
         <td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
         <td class="flex gap-2">
@@ -2113,8 +2116,12 @@
     });
     document.getElementById("printEotRegisterBtn").addEventListener("click", ()=> printEotRegister(eotRequests));
     document.getElementById("newEotReqBtn")?.addEventListener("click", ()=> openEotRequestModal(qualifying));
+    document.getElementById("newManualEotBtn").addEventListener("click", ()=> openManualEotModal());
     panel.querySelectorAll("[data-eot-view]").forEach(b=> b.addEventListener("click", ()=> printEOTRequestLetter(DB.eotRequests.get(b.dataset.eotView))));
-    panel.querySelectorAll("[data-eot-edit]").forEach(b=> b.addEventListener("click", ()=> openEotRequestModal(qualifying, DB.eotRequests.get(b.dataset.eotEdit))));
+    panel.querySelectorAll("[data-eot-edit]").forEach(b=> b.addEventListener("click", ()=>{
+      const r = DB.eotRequests.get(b.dataset.eotEdit);
+      if(r && r.isManual) openManualEotModal(r); else openEotRequestModal(qualifying, r);
+    }));
     panel.querySelectorAll(".eot-days-counter").forEach(el=> U.animateCounter(el, +el.dataset.target||0));
     panel.querySelectorAll("[data-eot-submit]").forEach(b=> b.addEventListener("click", ()=>{
       const r = DB.eotRequests.get(b.dataset.eotSubmit);
@@ -2204,6 +2211,96 @@
         DB.eotRequests.create(Object.assign({ projectId:project.id, requestNo:"EOT-"+String(DB._store.eotRequests.length+1).padStart(3,"0"), raisedBy:user.id }, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
       }
       if(status==="submitted") DB.notifications.create({ userId:project.pmId, title:"EOT Claim submitted", body:`New EOT Claim submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.closeModal("genericModal"); renderEOT();
+      U.toast(status==="submitted" ? "EOT Claim submitted for approval." : "EOT Claim saved as draft.", {type:"success"});
+    }
+    document.getElementById("eotSaveDraftBtn").addEventListener("click", ()=> saveRequest("draft"));
+    document.getElementById("eotSubmitBtn").addEventListener("click", ()=> saveRequest("submitted"));
+  }
+
+  // Manual EOT claim builder — for delays that aren't (or aren't yet) logged as
+  // a Hindrance: the Contractor/PM types the delay periods and reasons directly.
+  const EOT_MANUAL_CATEGORIES = ["Client/Employer Delay","Design/Drawing Delay","Material Shortage","Weather/Force Majeure","Statutory/Approval Delay","Site Access/Handover","Third-Party Delay","Change in Scope","Other"];
+  function openManualEotModal(existingReq){
+    let rows = existingReq ? (existingReq.manualEvents||[]).map(e=>Object.assign({},e)) : [{ type:"", category:EOT_MANUAL_CATEGORIES[0], description:"", delayFrom:"", delayTo:"", criticalPathImpact:false }];
+    document.getElementById("genericModalTitle").textContent = existingReq ? "Revise Manual EOT Claim" : "New Manual EOT Claim";
+    document.getElementById("genericModalBody").innerHTML = `
+      <p class="hint mb-2">Build this claim from your own delay events — no hindrance record required. Add as many rows as needed; overlapping periods are merged automatically so no day is double-counted.</p>
+      <div class="table-wrap" style="max-height:280px;overflow-y:auto"><table class="dtable" id="manualEotTable"><thead><tr><th style="width:26px"></th><th>Reason / Type</th><th>Category</th><th style="width:120px">Delay From</th><th style="width:120px">Delay To</th><th>Description</th><th style="width:60px">Critical</th><th></th></tr></thead><tbody></tbody></table></div>
+      <button class="btn btn-outline btn-sm mt-2" id="manualEotAddRowBtn">+ Add Delay Event</button>
+      <div class="card mt-3" id="eotPreview" style="background:var(--surface-2)"></div>`;
+    document.getElementById("genericModalFoot").innerHTML = `
+      <button class="btn btn-outline" id="eotSaveDraftBtn">Save as Draft</button>
+      <button class="btn btn-primary" id="eotSubmitBtn">Submit for Approval</button>`;
+    U.openModal("genericModal");
+
+    const tbody = document.querySelector("#manualEotTable tbody");
+    function renderRows(){
+      tbody.innerHTML = rows.map((r,i)=>`<tr data-i="${i}">
+        <td class="text-muted" style="text-align:center">${i+1}</td>
+        <td><input class="input" data-f="type" value="${U.escapeHtml(r.type||"")}" placeholder="e.g. Drawing not issued"></td>
+        <td><select class="select" data-f="category">${EOT_MANUAL_CATEGORIES.map(c=>`<option ${c===r.category?"selected":""}>${U.escapeHtml(c)}</option>`).join("")}</select></td>
+        <td><input class="input" type="date" data-f="delayFrom" value="${r.delayFrom||""}"></td>
+        <td><input class="input" type="date" data-f="delayTo" value="${r.delayTo||""}"></td>
+        <td><input class="input" data-f="description" value="${U.escapeHtml(r.description||"")}" placeholder="Cause & effect on the works"></td>
+        <td style="text-align:center"><input type="checkbox" data-f="criticalPathImpact" ${r.criticalPathImpact?"checked":""}></td>
+        <td><button class="btn-icon" data-rm-row="${i}" title="Remove" ${rows.length<=1?"disabled":""}>✕</button></td>
+      </tr>`).join("");
+      tbody.querySelectorAll("input,select").forEach(el=>{
+        const evt = el.type==="checkbox" ? "change" : "input";
+        el.addEventListener(evt, e=>{
+          const i = +e.target.closest("tr").dataset.i, f = e.target.dataset.f;
+          rows[i][f] = e.target.type==="checkbox" ? e.target.checked : e.target.value;
+          updatePreview();
+        });
+      });
+      tbody.querySelectorAll("[data-rm-row]").forEach(b=> b.addEventListener("click", ()=>{
+        if(rows.length<=1) return;
+        rows.splice(+b.dataset.rmRow,1); renderRows(); updatePreview();
+      }));
+    }
+    document.getElementById("manualEotAddRowBtn").addEventListener("click", ()=>{
+      rows.push({ type:"", category:EOT_MANUAL_CATEGORIES[0], description:"", delayFrom:"", delayTo:"", criticalPathImpact:false });
+      renderRows(); updatePreview();
+    });
+
+    function validRows(){ return rows.filter(r=>r.delayFrom && r.delayTo && r.type); }
+    function updatePreview(){
+      const sel = validRows();
+      const eot = computeEOT(sel);
+      const newEndDate = project.endDate && eot.totalDays ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
+      const preview = document.getElementById("eotPreview");
+      preview.innerHTML = sel.length ? `
+        <p style="font-size:13px;margin:0 0 6px"><b>Merged Delay Periods:</b></p>
+        ${eot.merged.map(m=>`<div style="font-size:12px;margin-bottom:4px">${U.fmtDate(m.from)} – ${U.fmtDate(m.to)} (${U.daysBetween(m.from,m.to)+1}d) — ${m.items.map(h=>U.escapeHtml(h.type)).join(", ")}</div>`).join("")}
+        <p style="font-size:13px;margin:8px 0 0"><b>Net EOT Days: <span class="eot-days-counter" data-target="${eot.totalDays}">0</span></b> &nbsp;|&nbsp; Revised Completion: <b>${newEndDate?U.fmtDate(newEndDate):"—"}</b></p>
+      ` : `<p class="text-muted" style="font-size:12px;margin:0">Fill in at least one row's Reason/Type, Delay From and Delay To to preview the overlap calculation.</p>`;
+      const counter = preview.querySelector(".eot-days-counter");
+      if(counter) U.animateCounter(counter, eot.totalDays, 400);
+    }
+    renderRows(); updatePreview();
+
+    function saveRequest(status){
+      const sel = validRows();
+      if(!sel.length){ U.toast("Fill in Reason/Type and both delay dates for at least one event.", {type:"danger"}); return; }
+      const eot = computeEOT(sel);
+      const newEndDate = project.endDate ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d.toISOString().slice(0,10); })() : null;
+      const payload = {
+        isManual: true,
+        manualEvents: sel,
+        hindranceIds: [],
+        mergedRanges: eot.merged.map(m=>({ from:m.from.toISOString().slice(0,10), to:m.to.toISOString().slice(0,10), items:m.items.map(h=>({type:h.type, category:h.category, description:h.description, criticalPathImpact:!!h.criticalPathImpact})) })),
+        totalDays: eot.totalDays,
+        originalCompletionDate: existingReq ? existingReq.originalCompletionDate : (project.endDate||null),
+        revisedCompletionDate: newEndDate,
+        status
+      };
+      if(existingReq){
+        DB.eotRequests.update(existingReq.id, Object.assign({}, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
+      } else {
+        DB.eotRequests.create(Object.assign({ projectId:project.id, requestNo:"EOT-"+String(DB._store.eotRequests.length+1).padStart(3,"0"), raisedBy:user.id }, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
+      }
+      if(status==="submitted") DB.notifications.create({ userId:project.pmId, title:"EOT Claim submitted", body:`New manual EOT Claim submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
       U.closeModal("genericModal"); renderEOT();
       U.toast(status==="submitted" ? "EOT Claim submitted for approval." : "EOT Claim saved as draft.", {type:"success"});
     }
@@ -2405,7 +2502,7 @@
     "Compliance: the statutory labour-law registers, per project. Consolidated registers (Ease of Compliance Rules 2017): Form A Employee, B Wage, C Loan/Fines, D Attendance/Muster, E Leave, plus Overtime, ESIC (0.75%/3.25%), EPF/ECR (12% + 8.33% EPS) and Accident. CLRA (Contract Labour) registers: Form XIII Register of Workmen, XVI Muster Roll, XVII Register of Wages, XX Deductions, XXI Fines, XXII Advances, XXIII Overtime. EPF monthly returns: Form 5 (new joinees) and Form 10 (exits). Each register auto-fills from your allotted team members and their attendance/wages, every cell is editable, you can add blank rows or reset to actual data, and print either the filled register or a blank template.",
     "Compliance — Declaration & Nomination Forms: the per-employee/establishment statutory forms — EPF Form 11 (composite declaration), EPF Form 2 (nomination), ESIC Form 1 (declaration), Gratuity Form F (nomination), CLRA Form XIX (wage slip), ESIC Form 37 (certificate of employment), and BOCW Form I (establishment registration) & building-worker beneficiary registration. Pick a team member to auto-fill known details (or keep blank), fill the rest, and print filled or blank.",
     "Hindrance: report blockers by picking a category and type from the admin-managed Hindrance Library (or \"Custom / Other\" to specify your own) — the library auto-fills typical root cause, impact, evidence required and responsible party.",
-    "EOT Claims (own tab): Extension-of-Time claims are managed in a dedicated tab with a KPI summary (potential pool, approved days, pending, revised completion). Once one or more hindrances have a delay period set, raise a claim by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft or Submit for Approval; the Project Manager can Approve (which updates the project's completion date), Return for Revision, or Reject. The \"📄 Letter\" button auto-drafts a full, pre-formatted EOT justification letter — contract particulars, grounds, consolidated chronology, critical-path analysis, prayer, declaration and two annexures (Annexure A: register of contributing hindrance events; Annexure B: merged delay chronology showing the computation) — ready to print or save as PDF.",
+    "EOT Claims (own tab): Extension-of-Time claims are managed in a dedicated tab with a KPI summary (potential pool, approved days, pending, revised completion). \"+ From Hindrances\" raises a claim from one or more hindrances that already have a delay period set. \"+ Manual EOT Claim\" lets you build a claim entirely by hand — type your own reasons, categories and delay periods, no hindrance record required — with add/remove rows and the same live overlap preview. Either way, overlapping periods are merged automatically so no day is double-counted; save as Draft or Submit for Approval, and the Project Manager can Approve (which updates the project's completion date), Return for Revision, or Reject. The \"📄 Letter\" button auto-drafts a full, pre-formatted EOT justification letter — contract particulars, grounds, consolidated chronology, critical-path analysis, prayer, declaration and two annexures — ready to print or save as PDF.",
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Purchase Orders: raise a PO to any material vendor with an item table (paste from Excel supported), then record the vendor's Proforma Invoice (PI number, validity, GST%, advance%) once received. Status moves Draft → Sent → PI Received → Confirmed → Goods Received, with a professional print view for both the PO and the PI.",
