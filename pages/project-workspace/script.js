@@ -2286,6 +2286,11 @@
   // Attendance depends on team-member allotments managed in Profile & Settings, so
   // re-render on tab open to reflect any allotment/rate changes made since page load.
   document.querySelector('#wsTabs [data-tab="attendance"]').addEventListener("click", renderAttendance);
+  // Statutory compliance registers — mounted lazily (and re-mounted on tab open,
+  // since the registers derive from team members & attendance managed elsewhere).
+  function renderCompliance(){ if(window.SW.Compliance) SW.Compliance.mount(document.getElementById("panelCompliance"), { project, user }); }
+  renderCompliance();
+  document.querySelector('#wsTabs [data-tab="compliance"]').addEventListener("click", renderCompliance);
   const requestedTab = params.get("tab");
   if(requestedTab){ document.querySelector(`#wsTabs [data-tab="${requestedTab}"]`)?.click(); }
 
@@ -2300,6 +2305,7 @@
     "Reconciliation: compares MB Sheet measured quantities against cumulative RA-billed quantities per BOQ item, flagging any item billed beyond what's actually been measured.",
     "DPR: log daily labour, equipment, weather and work done — useful for dispute resolution and progress tracking.",
     "Attendance: for team members you've allotted to this project (from Profile & Settings), pick a date and mark each person Present / Half Day / Present + OT / Absent. The Wage Summary tallies man-days and auto-calculates wages payable from each member's daily rate across every recorded date — export it as CSV or print a Muster Roll & Wage Sheet. Each party (PM and contractor) tracks only their own crew.",
+    "Compliance: the statutory labour-law registers, per project — Form A (Employee), Form B (Wage), Form C (Loan/Fines), Form D (Attendance/Muster), Form E (Leave) per the Ease of Compliance Rules 2017, plus Overtime, ESIC (0.75%/3.25%), EPF/ECR (12% + 8.33% EPS) and an Accident register. Each register auto-fills from your allotted team members and their attendance/wages, every cell is editable, you can add blank rows or reset to actual data, and print either the filled register or a blank template — all without altering anything else.",
     "Hindrance: report blockers by picking a category and type from the admin-managed Hindrance Library (or \"Custom / Other\" to specify your own) — the library auto-fills typical root cause, impact, evidence required and responsible party.",
     "EOT Requests: once one or more hindrances have a delay period set, raise a formal EOT Request by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft to keep editing, or Submit for Approval. The Project Manager can Approve (which updates the project's completion date), Return for Revision with a comment, or Reject. Every request can be printed as a professional EOT letter with full chronology and revision history.",
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
