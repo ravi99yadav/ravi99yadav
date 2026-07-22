@@ -325,6 +325,13 @@ table.dtable{width:100%;border-collapse:collapse;min-width:640px;}
 .floating-clock b{color:var(--text);font-size:14px;font-weight:700;font-family:var(--font-display);}
 @media (max-width:640px){.floating-clock{right:10px;top:calc(var(--navbar-h) + 8px);padding:6px 12px;font-size:11px;}.floating-clock b{font-size:12px;}}
 
+/* Inline navbar clock — lives in the top bar, never overlaps page content */
+.navbar-clock{display:flex;align-items:center;gap:8px;padding:5px 12px;border-radius:var(--r-pill);background:var(--surface-2);border:1px solid var(--border);font-size:11px;color:var(--text-muted);white-space:nowrap;line-height:1;flex:0 0 auto;}
+.navbar-clock b{color:var(--text);font-size:13px;font-weight:700;font-family:var(--font-display);letter-spacing:.02em;}
+.navbar-clock span{font-size:11px;}
+@media (max-width:900px){.navbar-clock span{display:none;}}
+@media (max-width:480px){.navbar-clock{display:none;}}
+
 /* ---- Global help FAB ---- */
 .help-fab{
   position:fixed;right:24px;bottom:24px;width:52px;height:52px;border-radius:50%;

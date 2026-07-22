@@ -85,6 +85,7 @@
       <span class="icon">${ICONS.search}</span>
       <input placeholder="Search tenders, projects, contractors… (Ctrl+K)" data-open-palette readonly>
     </div>
+    <div class="navbar-clock no-print" id="navbarClock" title="Current date & time"></div>
     <button class="btn btn-primary btn-sm no-print" id="quickCreateBtn">${ICONS.plus} Quick Create</button>
     <div style="position:relative">
       <button class="icon-btn" id="notifBtn">${ICONS.bell}${notifCount?'<span class="dot"></span>':''}</button>
@@ -264,6 +265,11 @@
   }
 
   function mountFloatingClock(){
+    // Preferred: render the clock inside the top navbar so it occupies its own
+    // space and never floats over (and hides) page content.
+    const slot = document.getElementById("navbarClock");
+    if(slot){ if(!slot.dataset.clockOn){ slot.dataset.clockOn = "1"; U().startClock(slot); } return; }
+    // Fallback for pages without a navbar (e.g. the landing page).
     if(document.getElementById("floatingClock")) return;
     const el = document.createElement("div");
     el.id = "floatingClock";
