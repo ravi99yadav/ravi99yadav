@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Letter Templates — SubletWorks.com</title>
+<meta name="description" content="Professional, pre-formatted construction correspondence — Notice to Proceed, Show Cause, Site Handover, Completion Certificates and more — auto-filled from your project.">
+<link rel="stylesheet" href="../../assets/css/variables.css">
+<link rel="stylesheet" href="../../assets/css/base.css">
+<link rel="stylesheet" href="../../assets/css/components.css">
+<link rel="stylesheet" href="../../assets/css/animations.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app-shell">
+  <div id="sidebarMount"></div>
+  <div class="app-main">
+    <div id="navbarMount"></div>
+    <main class="app-content page-enter">
+      <div class="mb-3">
+        <h1 style="margin:0">Letter Templates</h1>
+        <p class="text-muted" style="margin:2px 0 0">Professional, pre-formatted construction correspondence — pick a template, it auto-fills from your project, edit if needed, then print or save.</p>
+      </div>
+
+      <div class="lt-layout">
+        <!-- Left: template picker -->
+        <div class="card lt-picker">
+          <div class="field" style="margin:0 0 12px"><label>Project</label><select class="select" id="ltProjectSel"></select></div>
+          <div class="pill-tab mb-3" id="ltCatTabs">
+            <button class="active" data-cat="all">All</button>
+            <button data-cat="pm">To Contractor</button>
+            <button data-cat="contractor">To PM</button>
+            <button data-cat="either">Either</button>
+          </div>
+          <div id="ltTemplateList" class="lt-template-list"></div>
+        </div>
+
+        <!-- Right: form + preview -->
+        <div id="ltRight">
+          <div class="empty-state card" id="ltEmpty"><div class="es-icon">✉️</div>Pick a template on the left to get started.</div>
+          <div id="ltEditorWrap" class="hidden">
+            <div class="card mb-4" id="ltFieldsCard"></div>
+            <div class="flex justify-between items-center mb-2">
+              <h3 style="margin:0">Preview</h3>
+              <div class="flex gap-2">
+                <button class="btn btn-outline btn-sm" id="ltSaveDraftBtn">💾 Save Draft</button>
+                <button class="btn btn-primary btn-sm" id="ltPrintBtn">🖨 Print / Save PDF</button>
+              </div>
+            </div>
+            <div class="card lt-preview" id="ltPreview"></div>
+          </div>
+
+          <div class="card mt-5" id="ltDraftsCard">
+            <h3 class="mb-2">My Saved Drafts</h3>
+            <div id="ltDraftsList"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="../../assets/js/core/db.js"></script>
+<script src="../../assets/js/core/auth.js"></script>
+<script src="../../assets/js/core/utils.js"></script>
+<script src="../../assets/js/core/mask.js"></script>
+<script src="../../assets/js/core/ui.js"></script>
+<script src="../../assets/js/core/seed.js"></script>
+<script>window.SW.seed();</script>
+<script src="templates.js"></script>
+<script src="script.js"></script>
+</body>
+</html>
