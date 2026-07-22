@@ -1966,28 +1966,9 @@
       </div>
       <div class="card mb-4" style="border-left:4px solid var(--sw-accent)">
         <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
-          <div><b>⏱ EOT (Extension of Time) Overlap Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Live preview across all hindrances with a delay period set — overlapping dates are merged so days are never double-counted. Raise a formal EOT Request to submit this for approval.</p></div>
-          <div class="flex gap-3 items-center">
-            <div style="text-align:center"><div style="font-size:22px;font-weight:800">${eot.totalDays}</div><div class="text-muted" style="font-size:11px">day(s) potential EOT</div></div>
-            <button class="btn btn-primary btn-sm" id="newEotReqBtn" ${!qualifying.length?'disabled title="Raise a hindrance with a delay period first"':''}>+ New EOT Request</button>
-          </div>
+          <div><b>⏱ ${eot.totalDays} day(s) of potential EOT</b> from ${qualifying.length} delay event(s) with a period set.<p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Extension-of-Time claims are now managed in their own <b>EOT Claims</b> tab — raise, formulate and print the full justification letter with annexures there.</p></div>
+          <button class="btn btn-primary btn-sm" id="goEotTabBtn">Open EOT Claims →</button>
         </div>
-      </div>
-      <div class="card mb-4">
-        <div class="flex justify-between items-center mb-2"><h3>EOT Requests (${eotRequests.length})</h3>
-          <div class="flex gap-2"><button class="btn btn-outline btn-sm" id="exportEotCsvBtn">⬇ Export EOT Register CSV</button><button class="btn btn-outline btn-sm" id="printEotRegisterBtn">🖨 Print EOT Register</button></div>
-        </div>
-        ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Request No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Progress</th><th>Revised Completion</th><th></th></tr></thead>
-        <tbody>${eotRequests.map((r,ri)=>`<tr class="row-enter" style="animation-delay:${ri*40}ms">
-          <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b class="eot-days-counter" data-target="${r.totalDays}">0</b></td>
-          <td>${eotStepper(r.status)} ${eotStatusBadge(r.status)}${r.pmComment ? `<div class="text-muted mt-1" style="font-size:11px;max-width:220px">💬 ${U.escapeHtml(r.pmComment)}</div>` : ""}</td>
-          <td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
-          <td class="flex gap-2">
-            <button class="btn btn-sm btn-outline" data-eot-view="${r.id}">View</button>
-            ${isPM && r.status==="submitted" ? `<button class="btn btn-sm btn-success" data-eot-approve="${r.id}">Approve</button><button class="btn btn-sm btn-outline" data-eot-return="${r.id}">Return</button><button class="btn btn-sm btn-danger" data-eot-reject="${r.id}">Reject</button>` : ""}
-            ${r.raisedBy===user.id && (r.status==="draft"||r.status==="returned") ? `<button class="btn btn-sm btn-outline" data-eot-edit="${r.id}">Edit</button><button class="btn btn-sm btn-primary" data-eot-submit="${r.id}">Submit</button>` : ""}
-          </td>
-        </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">📄</div>No EOT requests raised yet.</div>`}
       </div>
       ${list.length ? list.map((h,hi)=>`<div class="hindrance-card card-enter" style="animation-delay:${hi*40}ms">
         <div><div class="flex gap-2 items-center mb-1">${h.category?`<span class="badge badge-neutral">${U.escapeHtml(h.category)}</span>`:""}<span class="badge badge-warning">${U.escapeHtml(h.type)}</span><span class="badge status-badge ${h.status==='resolved'?'badge-success':h.status==='acknowledged'?'badge-info':'badge-neutral'}">${h.status}</span>${h.criticalPathImpact?`<span class="badge badge-danger">Critical Path</span>`:""}${h.delayFrom&&h.delayTo?`<span class="badge badge-neutral">${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)} (${U.daysBetween(h.delayFrom,h.delayTo)+1}d)</span>`:""}</div>
@@ -2004,45 +1985,7 @@
         list.map(h=>[h.category||"", h.type, h.status, h.criticalPathImpact?"Yes":"No", h.delayFrom?U.fmtDate(h.delayFrom):"", h.delayTo?U.fmtDate(h.delayTo):"", h.delayFrom&&h.delayTo?U.daysBetween(h.delayFrom,h.delayTo)+1:"", h.description, h.evidenceRequired||"", h.responsibleParty||"", U.fmtDateTime(h.raisedAt)]));
     });
     document.getElementById("printHindRegisterBtn")?.addEventListener("click", ()=> printHindranceRegister(list));
-    document.getElementById("exportEotCsvBtn")?.addEventListener("click", ()=>{
-      U.exportCSV(`eot-register-${project.name}`,
-        ["Request No","Raised","Delay Events","Net EOT Days","Status","Original Completion","Revised Completion","PM Comment"],
-        eotRequests.map(r=>[r.requestNo, U.fmtDateTime(r.createdAt), (r.hindranceIds||[]).length, r.totalDays, r.status, r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"", r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"", r.pmComment||""]));
-    });
-    document.getElementById("printEotRegisterBtn")?.addEventListener("click", ()=> printEotRegister(eotRequests));
-    document.getElementById("newEotReqBtn")?.addEventListener("click", ()=> openEotRequestModal(qualifying));
-    panel.querySelectorAll("[data-eot-view]").forEach(b=> b.addEventListener("click", ()=> printEOTRequestLetter(DB.eotRequests.get(b.dataset.eotView))));
-    panel.querySelectorAll("[data-eot-edit]").forEach(b=> b.addEventListener("click", ()=> openEotRequestModal(qualifying, DB.eotRequests.get(b.dataset.eotEdit))));
-    panel.querySelectorAll(".eot-days-counter").forEach(el=> U.animateCounter(el, +el.dataset.target||0));
-    panel.querySelectorAll("[data-eot-submit]").forEach(b=> b.addEventListener("click", ()=>{
-      const r = DB.eotRequests.get(b.dataset.eotSubmit);
-      DB.eotRequests.update(r.id, { status:"submitted", submittedAt:DB.nowISO() });
-      DB.notifications.create({ userId:project.pmId, title:"EOT Request submitted", body:`${r.requestNo} submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
-      U.toast("EOT Request submitted for approval.", {type:"success"}); renderHindrance();
-    }));
-    panel.querySelectorAll("[data-eot-approve]").forEach(b=> b.addEventListener("click", ()=>{
-      const r = DB.eotRequests.get(b.dataset.eotApprove);
-      DB.eotRequests.update(r.id, { status:"approved", decidedBy:user.id, decidedAt:DB.nowISO() });
-      if(r.revisedCompletionDate) DB.projects.update(project.id, { endDate:r.revisedCompletionDate });
-      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request approved", body:`${r.requestNo} approved — ${r.totalDays} day(s) granted on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
-      U.toast("EOT Request approved.", {type:"success"}); renderHindrance();
-    }));
-    panel.querySelectorAll("[data-eot-return]").forEach(b=> b.addEventListener("click", ()=>{
-      const comment = prompt("Reason for returning this EOT Request for revision:");
-      if(comment===null) return;
-      const r = DB.eotRequests.get(b.dataset.eotReturn);
-      DB.eotRequests.update(r.id, { status:"returned", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
-      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request returned", body:`${r.requestNo} returned for revision on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
-      U.toast("EOT Request returned for revision.", {type:"warning"}); renderHindrance();
-    }));
-    panel.querySelectorAll("[data-eot-reject]").forEach(b=> b.addEventListener("click", ()=>{
-      const comment = prompt("Reason for rejecting this EOT Request:");
-      if(comment===null) return;
-      const r = DB.eotRequests.get(b.dataset.eotReject);
-      DB.eotRequests.update(r.id, { status:"rejected", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
-      DB.notifications.create({ userId:r.raisedBy, title:"EOT Request rejected", body:`${r.requestNo} rejected on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
-      U.toast("EOT Request rejected.", {type:"danger"}); renderHindrance();
-    }));
+    document.getElementById("goEotTabBtn")?.addEventListener("click", ()=> document.querySelector('#wsTabs [data-tab="eot"]')?.click());
 
     document.getElementById("newHindBtn")?.addEventListener("click", ()=>{
       const lib = hindranceLibrary();
@@ -2124,6 +2067,86 @@
     });
   }
 
+  /* ================= EOT CLAIMS (separate dedicated module) ================= */
+  function renderEOT(){
+    const hindrances = DB.hindrances.list(h=>h.projectId===project.id).sort((a,b)=>new Date(b.raisedAt)-new Date(a.raisedAt));
+    const qualifying = hindrances.filter(h=> h.delayFrom && h.delayTo);
+    const eot = computeEOT(qualifying);
+    const eotRequests = DB.eotRequests.list(r=>r.projectId===project.id).sort((a,b)=>new Date(b.createdAt)-new Date(a.createdAt));
+    const approvedDays = eotRequests.filter(r=>r.status==="approved").reduce((s,r)=>s+r.totalDays,0);
+    const pendingCount = eotRequests.filter(r=>r.status==="submitted").length;
+    const newEnd = project.endDate && eot.totalDays ? (()=>{ const d=new Date(project.endDate); d.setDate(d.getDate()+eot.totalDays); return d; })() : null;
+    const panel = document.getElementById("panelEOT");
+    panel.innerHTML = `
+      <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+        <div><h3 style="margin:0">Extension of Time (EOT) Claims</h3><p class="text-muted" style="margin:2px 0 0;font-size:12.5px">Formulate, submit, track and print full EOT justification letters with annexures — auto-built from the project's hindrance delay events.</p></div>
+        <div class="flex gap-2"><button class="btn btn-outline btn-sm" id="exportEotCsvBtn">⬇ Export Register CSV</button><button class="btn btn-outline btn-sm" id="printEotRegisterBtn">🖨 Print Register</button></div>
+      </div>
+      <div class="kpi-row grid grid-4 mb-4">
+        <div class="kpi-card card-gradient"><div class="kpi-icon">⏱</div><div class="kpi-value">${eot.totalDays}</div><div class="kpi-label">Potential EOT days (unclaimed pool)</div></div>
+        <div class="kpi-card card-gradient success"><div class="kpi-icon">✅</div><div class="kpi-value">${approvedDays}</div><div class="kpi-label">Approved EOT days granted</div></div>
+        <div class="kpi-card card-gradient warning"><div class="kpi-icon">📄</div><div class="kpi-value">${pendingCount}</div><div class="kpi-label">Awaiting PM decision</div></div>
+        <div class="kpi-card card-gradient"><div class="kpi-icon">📅</div><div class="kpi-value" style="font-size:16px">${newEnd?U.fmtDate(newEnd):"—"}</div><div class="kpi-label">Revised completion if full pool claimed</div></div>
+      </div>
+      <div class="card mb-4" style="border-left:4px solid var(--sw-accent)">
+        <div class="flex justify-between items-center" style="flex-wrap:wrap;gap:10px">
+          <div><b>⏱ EOT Overlap Calculator</b><p class="text-muted mt-1" style="margin:4px 0 0;font-size:12px">Merges every delay event that has a period set so no calendar day is double-counted. Raise a formal claim to submit the pool (or any subset) for approval.</p></div>
+          <button class="btn btn-primary btn-sm" id="newEotReqBtn" ${!qualifying.length?'disabled title="Raise a hindrance with a delay period first, on the Hindrance tab"':''}>+ New EOT Claim</button>
+        </div>
+      </div>
+      ${eotRequests.length ? `<div class="table-wrap"><table class="dtable"><thead><tr><th>Claim No</th><th>Raised</th><th>Delay Events</th><th>Net EOT Days</th><th>Progress</th><th>Revised Completion</th><th></th></tr></thead>
+      <tbody>${eotRequests.map((r,ri)=>`<tr class="row-enter" style="animation-delay:${ri*40}ms">
+        <td>${U.escapeHtml(r.requestNo)}</td><td>${U.relativeTime(r.createdAt)}</td><td>${(r.hindranceIds||[]).length}</td><td><b class="eot-days-counter" data-target="${r.totalDays}">0</b></td>
+        <td>${eotStepper(r.status)} ${eotStatusBadge(r.status)}${r.pmComment ? `<div class="text-muted mt-1" style="font-size:11px;max-width:220px">💬 ${U.escapeHtml(r.pmComment)}</div>` : ""}</td>
+        <td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td>
+        <td class="flex gap-2">
+          <button class="btn btn-sm btn-outline" data-eot-view="${r.id}">📄 Letter</button>
+          ${isPM && r.status==="submitted" ? `<button class="btn btn-sm btn-success" data-eot-approve="${r.id}">Approve</button><button class="btn btn-sm btn-outline" data-eot-return="${r.id}">Return</button><button class="btn btn-sm btn-danger" data-eot-reject="${r.id}">Reject</button>` : ""}
+          ${r.raisedBy===user.id && (r.status==="draft"||r.status==="returned") ? `<button class="btn btn-sm btn-outline" data-eot-edit="${r.id}">Edit</button><button class="btn btn-sm btn-primary" data-eot-submit="${r.id}">Submit</button>` : ""}
+        </td>
+      </tr>`).join("")}</tbody></table></div>` : `<div class="empty-state"><div class="es-icon">📄</div>No EOT claims raised yet. Set a delay period on a hindrance, then raise a claim here.</div>`}`;
+
+    document.getElementById("exportEotCsvBtn").addEventListener("click", ()=>{
+      U.exportCSV(`eot-register-${project.name}`,
+        ["Claim No","Raised","Delay Events","Net EOT Days","Status","Original Completion","Revised Completion","PM Comment"],
+        eotRequests.map(r=>[r.requestNo, U.fmtDateTime(r.createdAt), (r.hindranceIds||[]).length, r.totalDays, r.status, r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"", r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"", r.pmComment||""]));
+    });
+    document.getElementById("printEotRegisterBtn").addEventListener("click", ()=> printEotRegister(eotRequests));
+    document.getElementById("newEotReqBtn")?.addEventListener("click", ()=> openEotRequestModal(qualifying));
+    panel.querySelectorAll("[data-eot-view]").forEach(b=> b.addEventListener("click", ()=> printEOTRequestLetter(DB.eotRequests.get(b.dataset.eotView))));
+    panel.querySelectorAll("[data-eot-edit]").forEach(b=> b.addEventListener("click", ()=> openEotRequestModal(qualifying, DB.eotRequests.get(b.dataset.eotEdit))));
+    panel.querySelectorAll(".eot-days-counter").forEach(el=> U.animateCounter(el, +el.dataset.target||0));
+    panel.querySelectorAll("[data-eot-submit]").forEach(b=> b.addEventListener("click", ()=>{
+      const r = DB.eotRequests.get(b.dataset.eotSubmit);
+      DB.eotRequests.update(r.id, { status:"submitted", submittedAt:DB.nowISO() });
+      DB.notifications.create({ userId:project.pmId, title:"EOT Claim submitted", body:`${r.requestNo} submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.toast("EOT Claim submitted for approval.", {type:"success"}); renderEOT();
+    }));
+    panel.querySelectorAll("[data-eot-approve]").forEach(b=> b.addEventListener("click", ()=>{
+      const r = DB.eotRequests.get(b.dataset.eotApprove);
+      DB.eotRequests.update(r.id, { status:"approved", decidedBy:user.id, decidedAt:DB.nowISO() });
+      if(r.revisedCompletionDate){ DB.projects.update(project.id, { endDate:r.revisedCompletionDate }); project = DB.projects.get(project.id); }
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Claim approved", body:`${r.requestNo} approved — ${r.totalDays} day(s) granted on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.toast("EOT Claim approved — project completion date updated.", {type:"success"}); renderEOT();
+    }));
+    panel.querySelectorAll("[data-eot-return]").forEach(b=> b.addEventListener("click", ()=>{
+      const comment = prompt("Reason for returning this EOT Claim for revision:");
+      if(comment===null) return;
+      const r = DB.eotRequests.get(b.dataset.eotReturn);
+      DB.eotRequests.update(r.id, { status:"returned", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Claim returned", body:`${r.requestNo} returned for revision on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.toast("EOT Claim returned for revision.", {type:"warning"}); renderEOT();
+    }));
+    panel.querySelectorAll("[data-eot-reject]").forEach(b=> b.addEventListener("click", ()=>{
+      const comment = prompt("Reason for rejecting this EOT Claim:");
+      if(comment===null) return;
+      const r = DB.eotRequests.get(b.dataset.eotReject);
+      DB.eotRequests.update(r.id, { status:"rejected", pmComment:comment, decidedBy:user.id, decidedAt:DB.nowISO() });
+      DB.notifications.create({ userId:r.raisedBy, title:"EOT Claim rejected", body:`${r.requestNo} rejected on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.toast("EOT Claim rejected.", {type:"danger"}); renderEOT();
+    }));
+  }
+
   function openEotRequestModal(qualifying, existingReq){
     document.getElementById("genericModalTitle").textContent = existingReq ? "Revise EOT Request" : "New EOT Request";
     document.getElementById("genericModalBody").innerHTML = `
@@ -2180,9 +2203,9 @@
       } else {
         DB.eotRequests.create(Object.assign({ projectId:project.id, requestNo:"EOT-"+String(DB._store.eotRequests.length+1).padStart(3,"0"), raisedBy:user.id }, payload, status==="submitted"?{submittedAt:DB.nowISO()}:{}));
       }
-      if(status==="submitted") DB.notifications.create({ userId:project.pmId, title:"EOT Request submitted", body:`New EOT Request submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=hindrance" });
-      U.closeModal("genericModal"); renderHindrance();
-      U.toast(status==="submitted" ? "EOT Request submitted for approval." : "EOT Request saved as draft.", {type:"success"});
+      if(status==="submitted") DB.notifications.create({ userId:project.pmId, title:"EOT Claim submitted", body:`New EOT Claim submitted for approval on "${project.name}".`, read:false, link:"/pages/project-workspace/index.html?id="+project.id+"&tab=eot" });
+      U.closeModal("genericModal"); renderEOT();
+      U.toast(status==="submitted" ? "EOT Claim submitted for approval." : "EOT Claim saved as draft.", {type:"success"});
     }
     document.getElementById("eotSaveDraftBtn").addEventListener("click", ()=> saveRequest("draft"));
     document.getElementById("eotSubmitBtn").addEventListener("click", ()=> saveRequest("submitted"));
@@ -2217,32 +2240,102 @@
     const pm = DB.users.get(project.pmId);
     const pmCompany = pm ? (DB.companies.list(c=>c.ownerId===pm.id)[0]||{}) : {};
     const contractorUser = project.external ? null : DB.users.get(project.contractorId);
+    const contractorCompany = contractorUser ? (DB.companies.list(c=>c.ownerId===contractorUser.id)[0]||{}) : {};
     const contractorName = project.external ? (project.externalContractorName||"External Contractor") : (contractorUser?.name||"—");
-    const periodRows = (r.mergedRanges||[]).map(m=>`
-      <tr><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td>${U.daysBetween(m.from,m.to)+1}</td>
-      <td>${m.items.map(h=>`<b>[${U.escapeHtml(h.category||"—")}] ${U.escapeHtml(h.type)}:</b> ${U.escapeHtml(h.description)}`).join("<br><br>")}</td></tr>`).join("");
-    const criticalCount = (r.mergedRanges||[]).reduce((s,m)=>s+m.items.filter(h=>h.criticalPathImpact).length,0);
+    const letterheadName = contractorCompany.name || contractorName || "Contractor";
+    // Contract particulars — pulled from the Work Order / LOI where available.
+    const wo = project.workOrderId ? DB.workOrders.get(project.workOrderId) : (project.tenderId ? DB.workOrders.list(w=>w.tenderId===project.tenderId)[0] : null);
+    const loi = wo && wo.loiId ? DB.lois.get(wo.loiId) : null;
+    const tender = project.tenderId ? DB.tenders.get(project.tenderId) : null;
+    const contractValue = loi ? loi.contractValue : (tender ? tender.estimatedValue : null);
+
+    // Prefer live hindrance records (full detail) for the annexures; fall back to the snapshot stored on the claim.
+    const contributing = (r.hindranceIds||[]).map(id=>DB.hindrances.get(id)).filter(Boolean);
+    const merged = r.mergedRanges||[];
+    const criticalCount = merged.reduce((s,m)=>s+m.items.filter(h=>h.criticalPathImpact).length,0);
+    const totalGross = merged.reduce((s,m)=>s+(U.daysBetween(m.from,m.to)+1),0);
+    const overlapSaved = totalGross - r.totalDays;
     const statusColor = r.status==='approved'?'#16a34a':r.status==='rejected'?'#dc2626':r.status==='returned'?'#0284c7':'#d97706';
+
+    const chronRows = merged.map((m,i)=>`
+      <tr><td>${i+1}</td><td>${U.fmtDate(m.from)} – ${U.fmtDate(m.to)}</td><td style="text-align:center">${U.daysBetween(m.from,m.to)+1}</td>
+      <td>${m.items.map(h=>`<b>[${U.escapeHtml(h.category||"General")}] ${U.escapeHtml(h.type)}</b> — ${U.escapeHtml(h.description||"")}${h.criticalPathImpact?' <i>(critical path)</i>':''}`).join("<br>")}</td></tr>`).join("");
+
+    const annexA = (contributing.length ? contributing : merged.flatMap(m=>m.items)).map((h,i)=>`
+      <tr><td>${i+1}</td><td>${U.escapeHtml(h.category||"General")}</td><td>${U.escapeHtml(h.type)}</td>
+      <td>${h.delayFrom&&h.delayTo?`${U.fmtDate(h.delayFrom)} – ${U.fmtDate(h.delayTo)}`:"—"}</td>
+      <td style="text-align:center">${h.delayFrom&&h.delayTo?U.daysBetween(h.delayFrom,h.delayTo)+1:"—"}</td>
+      <td>${U.escapeHtml(h.description||"")}</td><td>${U.escapeHtml(h.responsibleParty||h.evidenceRequired||"—")}</td>
+      <td style="text-align:center">${h.criticalPathImpact?"Yes":"No"}</td></tr>`).join("");
+
     const body = `
-      <div class="letterhead"><div class="brand">${U.escapeHtml(pmCompany.name||"SubletWorks Client")}</div><div class="meta">${U.escapeHtml(pmCompany.gst||"")}<br>${U.escapeHtml(project.district)}, ${U.escapeHtml(project.state)}</div></div>
-      <div class="title">Extension of Time (EOT) Request</div>
-      <p style="font-size:13px"><b>Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)} &nbsp;|&nbsp; <b>Contractor:</b> ${U.escapeHtml(contractorName)} &nbsp;|&nbsp; <b>Date:</b> ${U.fmtDate(r.createdAt)} &nbsp;|&nbsp; <b>Status:</b> <span class="badge-inline" style="background:${statusColor}">${r.status}</span> &nbsp;|&nbsp; <b>Rev:</b> ${r.version||1}</p>
-      <h4>Background</h4>
-      <p>This request is submitted in accordance with the contract, seeking an Extension of Time on account of the delay event(s) described below, none of which are attributable to the Contractor's default. A total Extension of Time of <b>${r.totalDays} day(s)</b> is claimed, computed after merging overlapping delay periods so that no calendar day is counted more than once.</p>
-      <h4>Chronology of Delay Events</h4>
-      <table><thead><tr><th>Delay Period</th><th>Days</th><th>Cause &amp; Effect</th></tr></thead><tbody>${periodRows}</tbody></table>
-      <h4>Critical Path Impact</h4>
-      <p>${criticalCount>0 ? `${criticalCount} of the contributing delay event(s) are assessed as impacting the critical path, directly delaying the contract completion date on a day-for-day basis.` : `The contributing delay events are assessed as non-critical in isolation; the merged net impact above is nonetheless claimed as it affected the overall progress of works.`}</p>
-      <h4>Summary &amp; Requested Extension</h4>
-      <table><tr><td style="width:260px"><b>Original Completion Date</b></td><td>${r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"—"}</td></tr>
-      <tr><td><b>Total EOT Days Claimed</b></td><td>${r.totalDays}</td></tr>
-      <tr><td><b>Revised Completion Date (requested)</b></td><td>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</td></tr></table>
-      ${r.pmComment ? `<h4>Project Manager Remarks</h4><p>${U.escapeHtml(r.pmComment)}</p>` : ""}
-      <h4>Declaration</h4>
-      <p style="font-size:12px">The Contractor declares that the above delay events and periods are true and correct to the best of its knowledge, and supporting evidence is available on request.</p>
-      <div class="signoff"><div>${U.signatureImg(contractorUser)}${U.escapeHtml(contractorName)}<br>Contractor</div><div>${U.signatureImg(pm)}${pm?U.escapeHtml(pm.name):"—"}<br>For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
-      <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1}</span></div>`;
-    SW.UI.printDocument(`${U.escapeHtml(r.requestNo)} — EOT Letter — ${U.escapeHtml(project.name)}`, body);
+      <div class="letterhead"><div class="brand">${U.escapeHtml(letterheadName)}</div><div class="meta">${U.escapeHtml(contractorCompany.gst||"")}<br>${U.escapeHtml(project.district||"")}, ${U.escapeHtml(project.state||"")}</div></div>
+      <div class="title">Claim for Extension of Time (EOT)</div>
+      <table style="margin-bottom:6px;font-size:12px">
+        <tr><td style="width:130px"><b>Ref. No.</b></td><td>${U.escapeHtml(r.requestNo)} (Rev. ${r.version||1})</td><td style="width:110px"><b>Date</b></td><td>${U.fmtDate(r.createdAt)}</td></tr>
+        <tr><td><b>Status</b></td><td><span class="badge-inline" style="background:${statusColor}">${r.status}</span></td><td><b>Claimed EOT</b></td><td><b>${r.totalDays} day(s)</b></td></tr>
+      </table>
+      <p style="font-size:12.5px;margin:6px 0"><b>To:</b> The Project Manager / Engineer-in-Charge${pm?`, ${U.escapeHtml(pm.name)}`:""}${pmCompany.name?`, for ${U.escapeHtml(pmCompany.name)}`:""}<br>
+      <b>From:</b> ${U.escapeHtml(letterheadName)} (Contractor)</p>
+      <p style="font-size:12.5px;margin:6px 0"><b>Subject:</b> Application for Extension of Time for the work <i>"${U.escapeHtml(project.name)}"</i> on account of hindrances/delays beyond the Contractor's control.</p>
+
+      <h4>1. Contract Particulars</h4>
+      <table style="font-size:12.5px">
+        <tr><td style="width:260px"><b>Name of Work / Project</b></td><td>${U.escapeHtml(project.name)}</td></tr>
+        <tr><td><b>Location</b></td><td>${U.escapeHtml(project.district||"")}, ${U.escapeHtml(project.state||"")}</td></tr>
+        ${wo?`<tr><td><b>Work Order No.</b></td><td>${U.escapeHtml(wo.woNo||"—")} dated ${wo.issuedAt?U.fmtDate(wo.issuedAt):"—"}</td></tr>`:""}
+        ${loi?`<tr><td><b>LOI No.</b></td><td>${U.escapeHtml(loi.loiNo||"—")}</td></tr>`:""}
+        ${contractValue!=null?`<tr><td><b>Contract Value</b></td><td>${U.fmtINR(contractValue)}</td></tr>`:""}
+        <tr><td><b>Stipulated Date of Commencement</b></td><td>${project.startDate?U.fmtDate(project.startDate):"—"}</td></tr>
+        <tr><td><b>Original Date of Completion</b></td><td>${r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):(project.endDate?U.fmtDate(project.endDate):"—")}</td></tr>
+      </table>
+
+      <h4>2. Grounds for the Claim</h4>
+      <p style="font-size:12.5px">In accordance with the terms of the contract, the Contractor hereby applies for an Extension of Time of <b>${r.totalDays} (${U.escapeHtml(numToWords(r.totalDays))}) day(s)</b>. During the execution of the works, progress was impeded by ${merged.length} distinct hindrance period(s), none of which are attributable to any act, default or negligence of the Contractor. The individual delay events are catalogued at <b>Annexure&nbsp;A</b>; their consolidated, non-overlapping chronology (from which the net claim is derived) is set out below. Overlapping periods have been merged so that <b>${overlapSaved>0?`${overlapSaved} day(s) of overlap have been excluded and`:"no day is"} counted only once</b> — the gross of all periods being ${totalGross} day(s) and the net claim ${r.totalDays} day(s).</p>
+
+      <h4>3. Consolidated Chronology of Delay (Net)</h4>
+      <table style="font-size:12px"><thead><tr><th style="width:34px">Sr</th><th style="width:150px">Delay Period (merged)</th><th style="width:50px">Days</th><th>Cause &amp; Effect on the Works</th></tr></thead><tbody>${chronRows||'<tr><td colspan="4">—</td></tr>'}</tbody></table>
+
+      <h4>4. Critical Path Impact</h4>
+      <p style="font-size:12.5px">${criticalCount>0 ? `${criticalCount} of the contributing delay event(s) directly impacted the critical path of the programme and therefore delayed the contractual completion date on a day-for-day basis. The claimed extension is accordingly justified as a prolongation of the completion date.` : `While the contributing events are assessed as non-critical when viewed in isolation, their cumulative effect materially disrupted the planned sequence and overall progress of the works; the net extension is claimed on that basis.`}</p>
+
+      <h4>5. Extension Applied For</h4>
+      <table style="font-size:12.5px">
+        <tr><td style="width:260px"><b>Original Completion Date</b></td><td>${r.originalCompletionDate?U.fmtDate(r.originalCompletionDate):"—"}</td></tr>
+        <tr><td><b>Total EOT Days Claimed (net)</b></td><td><b>${r.totalDays} day(s)</b></td></tr>
+        <tr><td><b>Revised Completion Date (requested)</b></td><td><b>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</b></td></tr>
+      </table>
+
+      <h4>6. Prayer</h4>
+      <p style="font-size:12.5px">It is therefore respectfully prayed that the competent authority may be pleased to grant an Extension of Time of <b>${r.totalDays} day(s)</b>, revising the date of completion to <b>${r.revisedCompletionDate?U.fmtDate(r.revisedCompletionDate):"—"}</b>, without levy of compensation / liquidated damages for the said period, and to keep the contract alive and in force accordingly.</p>
+      ${r.pmComment ? `<h4>Project Manager / Engineer Remarks</h4><p style="font-size:12.5px">${U.escapeHtml(r.pmComment)}</p>` : ""}
+
+      <h4>7. Declaration &amp; Enclosures</h4>
+      <p style="font-size:12px">The Contractor declares that the particulars above are true and correct to the best of its knowledge and belief, and that documentary evidence in support is available and enclosed as applicable. <b>Enclosures:</b> Annexure&nbsp;A — Register of Contributing Hindrance Events; Annexure&nbsp;B — Merged Delay Chronology (basis of computation).</p>
+      <div class="signoff"><div>${U.signatureImg(contractorUser)}${U.escapeHtml(contractorName)}<br>Contractor / Authorised Signatory</div><div>${U.signatureImg(pm)}${pm?U.escapeHtml(pm.name):"—"}<br>Received — For ${U.escapeHtml(pmCompany.name||"Client")}</div></div>
+
+      <div style="page-break-before:always"></div>
+      <div class="title" style="font-size:15px">Annexure A — Register of Contributing Hindrance Events</div>
+      <p style="font-size:11px"><b>Claim Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; <b>Project:</b> ${U.escapeHtml(project.name)}</p>
+      <table style="font-size:11.5px"><thead><tr><th style="width:30px">Sr</th><th>Category</th><th>Type</th><th style="width:135px">Delay Period</th><th style="width:44px">Days</th><th>Description / Cause</th><th>Responsible / Evidence</th><th style="width:52px">Critical</th></tr></thead>
+      <tbody>${annexA||'<tr><td colspan="8">No contributing events recorded.</td></tr>'}</tbody></table>
+
+      <div style="page-break-before:always"></div>
+      <div class="title" style="font-size:15px">Annexure B — Merged Delay Chronology (Basis of Computation)</div>
+      <p style="font-size:11px"><b>Claim Ref:</b> ${U.escapeHtml(r.requestNo)} &nbsp;|&nbsp; Gross of all periods: ${totalGross} day(s) &nbsp;|&nbsp; Overlap excluded: ${overlapSaved>0?overlapSaved:0} day(s) &nbsp;|&nbsp; <b>Net EOT claimed: ${r.totalDays} day(s)</b></p>
+      <table style="font-size:12px"><thead><tr><th style="width:34px">Sr</th><th style="width:170px">Merged Period</th><th style="width:60px">Days</th><th>Contributing Events</th></tr></thead><tbody>${chronRows||'<tr><td colspan="4">—</td></tr>'}</tbody></table>
+      <div class="footer"><span>Generated via SubletWorks.com — auto-drafted EOT justification</span><span>${U.escapeHtml(r.requestNo)} · Revision ${r.version||1} · ${U.fmtDateTime(new Date())}</span></div>`;
+    SW.UI.printDocument(`${U.escapeHtml(r.requestNo)} — EOT Justification — ${U.escapeHtml(project.name)}`, body);
+  }
+  // Small number-to-words helper for the claim wording (handles typical EOT ranges).
+  function numToWords(n){
+    n = Math.round(+n||0);
+    const a = ["zero","one","two","three","four","five","six","seven","eight","nine","ten","eleven","twelve","thirteen","fourteen","fifteen","sixteen","seventeen","eighteen","nineteen"];
+    const b = ["","","twenty","thirty","forty","fifty","sixty","seventy","eighty","ninety"];
+    if(n<20) return a[n];
+    if(n<100) return b[Math.floor(n/10)] + (n%10?"-"+a[n%10]:"");
+    if(n<1000) return a[Math.floor(n/100)] + " hundred" + (n%100?" "+numToWords(n%100):"");
+    return String(n);
   }
 
   /* ================= PAYMENT REQUESTS ================= */
@@ -2277,8 +2370,12 @@
     });
   }
 
-  renderHeader(); renderOverview(); renderWBS(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderAttendance(); renderHindrance(); renderPayments();
+  renderHeader(); renderOverview(); renderWBS(); renderGantt(); renderKanban(); renderCalendar(); renderWorkPlan(); renderMB(); renderExtraItems(); renderRABill(); renderPO(); renderVehicle(); renderGRN(); renderReconciliation(); renderDPR(); renderAttendance(); renderHindrance(); renderEOT(); renderPayments();
   U.initTabs();
+  // EOT claims derive from hindrance delay events; re-render on tab open so it
+  // always reflects the latest hindrances and any approval that moved the date.
+  document.querySelector('#wsTabs [data-tab="eot"]').addEventListener("click", renderEOT);
+  document.querySelector('#wsTabs [data-tab="hindrance"]').addEventListener("click", renderHindrance);
   document.querySelector('#wsTabs [data-tab="reconciliation"]').addEventListener("click", renderReconciliation);
   document.querySelector('#wsTabs [data-tab="overview"]').addEventListener("click", renderOverview);
   document.querySelector('#wsTabs [data-tab="vehicle"]').addEventListener("click", renderVehicle);
@@ -2308,7 +2405,7 @@
     "Compliance: the statutory labour-law registers, per project. Consolidated registers (Ease of Compliance Rules 2017): Form A Employee, B Wage, C Loan/Fines, D Attendance/Muster, E Leave, plus Overtime, ESIC (0.75%/3.25%), EPF/ECR (12% + 8.33% EPS) and Accident. CLRA (Contract Labour) registers: Form XIII Register of Workmen, XVI Muster Roll, XVII Register of Wages, XX Deductions, XXI Fines, XXII Advances, XXIII Overtime. EPF monthly returns: Form 5 (new joinees) and Form 10 (exits). Each register auto-fills from your allotted team members and their attendance/wages, every cell is editable, you can add blank rows or reset to actual data, and print either the filled register or a blank template.",
     "Compliance — Declaration & Nomination Forms: the per-employee/establishment statutory forms — EPF Form 11 (composite declaration), EPF Form 2 (nomination), ESIC Form 1 (declaration), Gratuity Form F (nomination), CLRA Form XIX (wage slip), ESIC Form 37 (certificate of employment), and BOCW Form I (establishment registration) & building-worker beneficiary registration. Pick a team member to auto-fill known details (or keep blank), fill the rest, and print filled or blank.",
     "Hindrance: report blockers by picking a category and type from the admin-managed Hindrance Library (or \"Custom / Other\" to specify your own) — the library auto-fills typical root cause, impact, evidence required and responsible party.",
-    "EOT Requests: once one or more hindrances have a delay period set, raise a formal EOT Request by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft to keep editing, or Submit for Approval. The Project Manager can Approve (which updates the project's completion date), Return for Revision with a comment, or Reject. Every request can be printed as a professional EOT letter with full chronology and revision history.",
+    "EOT Claims (own tab): Extension-of-Time claims are managed in a dedicated tab with a KPI summary (potential pool, approved days, pending, revised completion). Once one or more hindrances have a delay period set, raise a claim by selecting which delay events it covers — overlapping periods are merged automatically so no day is double-counted. Save as Draft or Submit for Approval; the Project Manager can Approve (which updates the project's completion date), Return for Revision, or Reject. The \"📄 Letter\" button auto-drafts a full, pre-formatted EOT justification letter — contract particulars, grounds, consolidated chronology, critical-path analysis, prayer, declaration and two annexures (Annexure A: register of contributing hindrance events; Annexure B: merged delay chronology showing the computation) — ready to print or save as PDF.",
     "Use Export CSV / Print Register on the Hindrance Register and EOT Requests cards to generate the full Hindrance Register and EOT Register for reporting or client submission.",
     "RA Bill print now shows the full item-wise claim referenced against the BOQ and MB abstract (BOQ qty, rate, previous/this-bill/cumulative quantity) alongside the retention/GST/TDS summary — ready to hand to the client for record.",
     "Purchase Orders: raise a PO to any material vendor with an item table (paste from Excel supported), then record the vendor's Proforma Invoice (PI number, validity, GST%, advance%) once received. Status moves Draft → Sent → PI Received → Confirmed → Goods Received, with a professional print view for both the PO and the PI.",
