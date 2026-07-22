@@ -24,7 +24,7 @@
     const employer = company.name || user.name || "—";
     const estAddress = [company.district||project.district, company.state||project.state].filter(Boolean).join(", ");
 
-    let state = { formId:"A", period: new Date().toISOString().slice(0,7) };
+    let state = { view:"registers", formId:"A", period: new Date().toISOString().slice(0,7), docFormId:"F11", memberId:"" };
 
     /* -------- data sources -------- */
     function members(){
@@ -136,6 +136,66 @@
       ["E","Form E · Leave"],["OT","Overtime"],["ESIC","ESIC"],["EPF","EPF / ECR"],["ACC","Accident"]
     ];
 
+    /* -------- per-employee declaration & nomination forms -------- */
+    const FORM_DOCS = {
+      F11: { formNo:"11", title:"EPF — Composite Declaration Form (Form No. 11)", act:"Para 34 & 57, Employees' Provident Funds Scheme 1952 — declaration by a new employee",
+        sections:[
+          { h:"Employee Details", fields:[
+            {k:"name",l:"Name of the Member",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},
+            {k:"dob",l:"Date of Birth",type:"date"},{k:"gender",l:"Gender"},{k:"marital",l:"Marital Status"},
+            {k:"mobile",l:"Mobile Number",auto:m=>m.phone},{k:"email",l:"Email ID",auto:m=>m.email},{k:"designation",l:"Designation",auto:m=>m.designation||m.skill}
+          ]},
+          { h:"Previous Employment", fields:[
+            {k:"prevEpf",l:"Earlier a member of EPF Scheme 1952?",type:"yesno"},{k:"prevEps",l:"Earlier a member of EPS 1995?",type:"yesno"},
+            {k:"uan",l:"Universal Account Number (UAN)"},{k:"prevPf",l:"Previous PF Account Number"},
+            {k:"exitDate",l:"Date of Exit from Previous Employment",type:"date"},{k:"scheme",l:"Scheme Certificate No. (if any)"},{k:"ppo",l:"PPO No. (if any)"}
+          ]},
+          { h:"KYC Details", fields:[
+            {k:"aadhaar",l:"Aadhaar Number"},{k:"pan",l:"PAN"},{k:"bank",l:"Bank Account Number"},{k:"ifsc",l:"IFSC Code"}
+          ]}
+        ] },
+      F2: { formNo:"2", title:"EPF & EPS — Nomination & Declaration Form (Form No. 2)", act:"Para 33 & 61(1), EPF Scheme 1952 / Para 18, EPS 1995",
+        sections:[
+          { h:"Member Details", fields:[
+            {k:"name",l:"Name of the Member",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},
+            {k:"dob",l:"Date of Birth",type:"date"},{k:"gender",l:"Gender"},{k:"marital",l:"Marital Status"},
+            {k:"pf",l:"PF Account No. / UAN"},{k:"doj",l:"Date of Joining",type:"date"},{k:"address",l:"Permanent Address"}
+          ]},
+          { h:"Part A — EPF Nominee", fields:[
+            {k:"n1name",l:"Nominee Name"},{k:"n1rel",l:"Relationship with Member"},{k:"n1dob",l:"Nominee Date of Birth",type:"date"},
+            {k:"n1share",l:"Share of Accumulation (%)"},{k:"n1guardian",l:"Guardian (if nominee is a minor)"}
+          ]},
+          { h:"Part B — EPS Family Particulars", fields:[
+            {k:"f1name",l:"Family Member Name"},{k:"f1rel",l:"Relationship"},{k:"f1dob",l:"Date of Birth",type:"date"}
+          ]}
+        ] },
+      E1: { formNo:"1", title:"ESIC — Declaration Form (Form 1)", act:"Regulation 11 & 12, Employees' State Insurance (General) Regulations, 1950",
+        sections:[
+          { h:"Insured Person Details", fields:[
+            {k:"ip",l:"Insurance Number (if already allotted)"},{k:"name",l:"Name of Insured Person",auto:m=>m.name},
+            {k:"guardian",l:"Father's / Husband's Name"},{k:"dob",l:"Date of Birth",type:"date"},{k:"gender",l:"Gender"},
+            {k:"marital",l:"Marital Status"},{k:"mobile",l:"Mobile Number",auto:m=>m.phone},{k:"doa",l:"Date of Appointment",type:"date"},
+            {k:"address",l:"Present Address"},{k:"permAddress",l:"Permanent Address"}
+          ]},
+          { h:"Family Particulars & Nominee", fields:[
+            {k:"f1name",l:"Family Member Name"},{k:"f1rel",l:"Relationship"},{k:"f1dob",l:"Date of Birth",type:"date"},
+            {k:"f1resides",l:"Residing with IP?",type:"yesno"},{k:"nominee",l:"Nominee for Cash Benefit"},{k:"nomineeRel",l:"Nominee Relationship"}
+          ]}
+        ] },
+      GF: { formNo:"F", title:"Gratuity — Nomination (Form F)", act:"Rule 6(1), Payment of Gratuity (Central) Rules, 1972",
+        sections:[
+          { h:"Employee Details", fields:[
+            {k:"name",l:"Name of Employee",auto:m=>m.name},{k:"guardian",l:"Father's / Husband's Name"},
+            {k:"designation",l:"Designation",auto:m=>m.designation||m.skill},{k:"doj",l:"Date of Appointment",type:"date"},{k:"dept",l:"Department / Section"}
+          ]},
+          { h:"Nominee(s)", fields:[
+            {k:"n1name",l:"Nominee Name"},{k:"n1rel",l:"Relationship with Employee"},{k:"n1age",l:"Age of Nominee"},
+            {k:"n1share",l:"Proportion of Gratuity (%)"},{k:"n1address",l:"Nominee Address"}
+          ]}
+        ] }
+    };
+    const FORM_DOC_ORDER = [["F11","EPF Form 11"],["F2","EPF Form 2"],["E1","ESIC Form 1"],["GF","Gratuity Form F"]];
+
     /* -------- persistence -------- */
     function periodKey(formId){ return FORMS[formId].monthly ? state.period : ""; }
     function docFor(formId, period){ return DB.complianceData.list(d=> d.ownerId===user.id && d.projectId===project.id && d.formId===formId && (d.period||"")===(period||""))[0]; }
@@ -151,12 +211,22 @@
       return rows;
     }
 
-    function render(){
+    function render(){ return state.view==="forms" ? renderForms() : renderRegisters(); }
+    function viewToggleHtml(){
+      return `<div class="cmp-viewtoggle">
+        <button class="cmp-vt ${state.view==="registers"?"active":""}" data-view="registers">📋 Registers (A–E, ESIC, EPF…)</button>
+        <button class="cmp-vt ${state.view==="forms"?"active":""}" data-view="forms">📝 Declaration &amp; Nomination Forms (11, 2, 1, F)</button>
+      </div>`;
+    }
+    function bindViewToggle(){ container.querySelectorAll("[data-view]").forEach(b=> b.addEventListener("click", ()=>{ state.view=b.dataset.view; render(); })); }
+
+    function renderRegisters(){
       const form = FORMS[state.formId], p = periodKey(state.formId);
       const cols = form.columns(state.period);
       const rows = currentRows();
       const monthCtrl = form.monthly ? `<div class="field" style="margin:0"><label>Month</label><input class="input" type="month" id="cmpMonth" value="${state.period}" style="max-width:170px"></div>` : "";
       container.innerHTML = `
+        ${viewToggleHtml()}
         <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
           <h3 style="margin:0">Statutory Registers &amp; Forms</h3>
           <div class="flex gap-2">
@@ -189,6 +259,7 @@
         <p class="text-muted mt-2" style="font-size:12px">Every cell is editable — type directly to fill or correct any value; changes save automatically. Auto-filled columns (name, designation, days, wages, statutory contributions) come from your allotted team members and their attendance; the rest are for manual entry. Use <b>Print Blank</b> for an empty register template and <b>Print Filled</b> for the completed one.</p>`;
 
       // register tabs
+      bindViewToggle();
       container.querySelectorAll("[data-form]").forEach(b=> b.addEventListener("click", ()=>{ state.formId=b.dataset.form; render(); }));
       if(form.monthly) container.querySelector("#cmpMonth").addEventListener("change", e=>{ state.period=e.target.value; render(); });
       container.querySelector("#cmpAddRowBtn").addEventListener("click", ()=>{ const rs=currentRows(); rs.push({}); saveRows(state.formId, p, rs); render(); });
@@ -234,6 +305,94 @@
         <div class="signoff"><div>Prepared By</div><div>Authorised Signatory<br>For ${esc(employer)}</div></div>
         <div class="footer"><span>Generated via SubletWorks.com${blank?" — BLANK TEMPLATE":""}</span><span>${esc(U.fmtDateTime(new Date()))}</span></div>`;
       global.SW.UI.printDocument(`${form.formNo==="—"?"":"Form "+form.formNo+" — "}${form.title}`, body, {landscape:true});
+    }
+
+    /* -------- per-employee declaration & nomination forms -------- */
+    function docFieldsFor(docFormId, memberId){
+      const period = "doc:"+(memberId||"blank");
+      const d = docFor("DOC_"+docFormId, period);
+      return d ? Object.assign({}, d.rows[0]||{}) : null;
+    }
+    function saveDocFields(docFormId, memberId, fields){
+      saveRows("DOC_"+docFormId, "doc:"+(memberId||"blank"), [fields]);
+    }
+    function seedDocFields(def, member){
+      const f = {};
+      def.sections.forEach(s=> s.fields.forEach(fld=>{ if(fld.auto && member){ const v=fld.auto(member); if(v) f[fld.k]=v; } }));
+      return f;
+    }
+    function renderForms(){
+      const def = FORM_DOCS[state.docFormId];
+      const mem = state.memberId ? DB.teamMembers.get(state.memberId) : null;
+      let fields = docFieldsFor(state.docFormId, state.memberId);
+      if(fields===null){ fields = seedDocFields(def, mem); saveDocFields(state.docFormId, state.memberId, fields); }
+      const memberOpts = `<option value="">— Blank form —</option>` + members().map(m=>`<option value="${m.id}" ${m.id===state.memberId?"selected":""}>${esc(m.name)}${m.designation?" ("+esc(m.designation)+")":""}</option>`).join("");
+
+      function fieldCtrl(fld){
+        const val = fields[fld.k]!=null ? fields[fld.k] : "";
+        if(fld.type==="yesno") return `<select class="select" data-fkey="${fld.k}"><option value="" ${!val?"selected":""}>—</option><option ${val==="Yes"?"selected":""}>Yes</option><option ${val==="No"?"selected":""}>No</option></select>`;
+        if(fld.type==="date") return `<input class="input" type="date" data-fkey="${fld.k}" value="${esc(val)}">`;
+        return `<input class="input" data-fkey="${fld.k}" value="${esc(val)}">`;
+      }
+
+      container.innerHTML = `
+        ${viewToggleHtml()}
+        <div class="flex justify-between items-center mb-3" style="flex-wrap:wrap;gap:10px">
+          <h3 style="margin:0">Declaration &amp; Nomination Forms</h3>
+          <div class="flex gap-2">
+            <button class="btn btn-outline btn-sm" id="cmpFormBlankBtn">🖨 Print Blank</button>
+            <button class="btn btn-primary btn-sm" id="cmpFormPrintBtn">🖨 Print Filled</button>
+          </div>
+        </div>
+        <div class="cmp-tabs" id="cmpDocTabs">${FORM_DOC_ORDER.map(([id,label])=>`<button class="cmp-tab ${id===state.docFormId?"active":""}" data-docform="${id}">${label}</button>`).join("")}</div>
+        <div class="card cmp-head">
+          <div class="cmp-head-grid">
+            <div><span>Form</span><b>Form ${esc(def.formNo)} — ${esc(def.title.replace(/\s*\(.*\)$/,""))}</b></div>
+            <div><span>Establishment</span><b>${esc(employer)}</b></div>
+            <div><span>Project / Site</span><b>${esc(project.name)}</b></div>
+          </div>
+          <p class="cmp-act">${esc(def.act)}</p>
+        </div>
+        <div class="flex items-end gap-3 mb-3" style="flex-wrap:wrap">
+          <div class="field" style="margin:0;min-width:280px"><label>Fill for team member</label><select class="select" id="cmpMemberSel">${memberOpts}</select></div>
+          <span class="text-muted" style="font-size:12px">Pick a member to auto-fill known details, or keep it blank. Every field below is editable and saves automatically.</span>
+        </div>
+        <div class="card cmp-form" id="cmpForm">
+          ${def.sections.map(s=>`
+            <div class="cmp-form-section"><h4>${esc(s.h)}</h4>
+              <div class="cmp-form-grid">${s.fields.map(fld=>`<div class="field"><label>${esc(fld.l)}</label>${fieldCtrl(fld)}</div>`).join("")}</div>
+            </div>`).join("")}
+          <p class="text-muted" style="font-size:12px;margin:10px 0 0">Declaration: I hereby declare that the particulars given above are true to the best of my knowledge and belief.</p>
+        </div>`;
+
+      bindViewToggle();
+      container.querySelectorAll("[data-docform]").forEach(b=> b.addEventListener("click", ()=>{ state.docFormId=b.dataset.docform; render(); }));
+      container.querySelector("#cmpMemberSel").addEventListener("change", e=>{ state.memberId=e.target.value; render(); });
+      const formEl = container.querySelector("#cmpForm");
+      function gather(){ const obj={}; formEl.querySelectorAll("[data-fkey]").forEach(el=> obj[el.dataset.fkey]=el.value.trim()); saveDocFields(state.docFormId, state.memberId, obj); }
+      formEl.addEventListener("change", gather);
+      formEl.addEventListener("focusout", gather);
+      container.querySelector("#cmpFormPrintBtn").addEventListener("click", ()=>{ gather(); printFormDoc(false); });
+      container.querySelector("#cmpFormBlankBtn").addEventListener("click", ()=> printFormDoc(true));
+    }
+    function printFormDoc(blank){
+      const def = FORM_DOCS[state.docFormId];
+      const fields = blank ? {} : (docFieldsFor(state.docFormId, state.memberId) || {});
+      const sections = def.sections.map(s=>`
+        <h4>${esc(s.h)}</h4>
+        <table class="kv"><tbody>${s.fields.map(fld=>`<tr><th style="width:280px">${esc(fld.l)}</th><td>${blank?"":esc(fields[fld.k]||"")}</td></tr>`).join("")}</tbody></table>`).join("");
+      const body = `
+        <div class="title">FORM ${esc(def.formNo)} — ${esc(def.title.replace(/\s*\(.*\)$/,"").toUpperCase())}</div>
+        <p style="font-size:11px;text-align:center;margin:-8px 0 12px;color:#555">${esc(def.act)}</p>
+        <table style="margin-bottom:10px"><tbody>
+          <tr><th style="width:200px">Name &amp; Address of Establishment</th><td>${esc(employer)}${estAddress?", "+esc(estAddress):""}</td></tr>
+          <tr><th>Project / Site</th><td>${esc(project.name)}</td></tr>
+        </tbody></table>
+        ${sections}
+        <p style="font-size:12px;margin-top:14px">Declaration: I hereby declare that the particulars given above are true to the best of my knowledge and belief.</p>
+        <div class="signoff"><div>Signature / Thumb Impression of Employee<br>Date:</div><div>Authorised Signatory<br>For ${esc(employer)}</div></div>
+        <div class="footer"><span>Generated via SubletWorks.com${blank?" — BLANK TEMPLATE":""}</span><span>${esc(U.fmtDateTime(new Date()))}</span></div>`;
+      global.SW.UI.printDocument(`Form ${def.formNo} — ${def.title}`, body);
     }
 
     render();
