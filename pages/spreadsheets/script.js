@@ -4,17 +4,23 @@
   if(!user) return;
   const DB = SW.DB, U = SW.Utils, F = SW.Formula;
 
-  const DEFAULT_ROWS = 30, DEFAULT_COLS = 12;
+  const DEFAULT_ROWS = 30, DEFAULT_COLS = 12, DEFAULT_COL_W = 110, DEFAULT_ROW_H = 26;
   let doc = null;        // current workbook DB record (live object)
   let sheetIdx = 0;      // active sheet index
   let selKey = "A1";     // selected cell
+  let selAnchor = "A1";  // anchor for shift-click range selection
+  let selRange = null;   // {r1,c1,r2,c2} or null (single cell)
   let saveTimer = null;
 
   /* ---------------- persistence ---------------- */
-  function newSheet(name){ return { name: name||"Sheet 1", rows: DEFAULT_ROWS, cols: DEFAULT_COLS, cells: {} }; }
+  function newSheet(name){ return { name: name||"Sheet 1", rows: DEFAULT_ROWS, cols: DEFAULT_COLS, cells: {}, colW: {}, rowH: {} }; }
   function myDocs(){ return DB.spreadsheets.list(d=>d.ownerId===user.id).sort((a,b)=> new Date(b.updatedAt)-new Date(a.updatedAt)); }
   function sheet(){ return doc.sheets[sheetIdx]; }
   function cellOf(key, create){ let c = sheet().cells[key]; if(!c && create){ c = sheet().cells[key] = {}; } return c; }
+  function colW(c){ const s=sheet(); return (s.colW && s.colW[c]) || DEFAULT_COL_W; }
+  function rowH(r){ const s=sheet(); return (s.rowH && s.rowH[r]) || DEFAULT_ROW_H; }
+  function setColW(c,w){ const s=sheet(); if(!s.colW) s.colW={}; s.colW[c]=Math.max(36, Math.round(w)); }
+  function setRowH(r,h){ const s=sheet(); if(!s.rowH) s.rowH={}; s.rowH[r]=Math.max(20, Math.round(h)); }
 
   function flushSave(){
     if(!doc) return;
@@ -106,18 +112,21 @@
     td.style.textAlign  = s.a || "";
     td.style.color      = s.color || "";
     td.style.background = s.bg || "";
+    td.classList.toggle("wrapped", !!s.wrap);
     td.classList.toggle("has-formula", !!(c && typeof c.v==="string" && c.v[0]==="="));
   }
   function renderGrid(){
     const s = sheet(), resolve = buildResolver();
-    let html = `<table class="ss-grid"><thead><tr><th class="ss-corner"></th>`;
-    for(let c=0;c<s.cols;c++) html += `<th class="ss-colhead" data-col="${c}">${F.idxToCol(c)}</th>`;
+    let html = `<table class="ss-grid"><colgroup><col class="ss-corner-col">`;
+    for(let c=0;c<s.cols;c++) html += `<col data-colw="${c}" style="width:${colW(c)}px">`;
+    html += `</colgroup><thead><tr><th class="ss-corner"></th>`;
+    for(let c=0;c<s.cols;c++) html += `<th class="ss-colhead" data-col="${c}">${F.idxToCol(c)}<span class="ss-col-resize" data-col="${c}" title="Drag to resize · double-click to auto-fit"></span></th>`;
     html += `</tr></thead><tbody>`;
     for(let r=0;r<s.rows;r++){
-      html += `<tr><th class="ss-rowhead">${r+1}</th>`;
+      html += `<tr style="height:${rowH(r)}px"><th class="ss-rowhead" data-row="${r}">${r+1}<span class="ss-row-resize" data-row="${r}" title="Drag to resize row"></span></th>`;
       for(let c=0;c<s.cols;c++){
         const key = F.cellKey(r,c);
-        html += `<td class="ss-cell" data-key="${key}" tabindex="-1"></td>`;
+        html += `<td class="ss-cell" data-key="${key}" data-c="${c}" tabindex="-1"></td>`;
       }
       html += `</tr>`;
     }
@@ -134,9 +143,62 @@
       td.addEventListener("blur", ()=> onCellBlur(td));
       td.addEventListener("input", ()=>{ document.getElementById("formulaInput").value = td.textContent; });
       td.addEventListener("keydown", e=> onCellKey(e, td));
+      td.addEventListener("mousedown", e=>{ if(e.shiftKey){ e.preventDefault(); extendRange(td.dataset.key); } });
     });
-    wrap.querySelectorAll(".ss-colhead").forEach(th=> th.addEventListener("click", ()=> selectColumn(+th.dataset.col)));
-    selectCell(selKey, false);
+    wrap.querySelectorAll(".ss-colhead").forEach(th=> th.addEventListener("click", e=>{ if(!e.target.classList.contains("ss-col-resize")) selectColumn(+th.dataset.col); }));
+    wrap.querySelectorAll(".ss-col-resize").forEach(h=> attachColResize(h));
+    wrap.querySelectorAll(".ss-row-resize").forEach(h=> attachRowResize(h));
+    selectCell(selKey, false); highlightRange();
+  }
+
+  /* ---- column / row resize + auto-fit ---- */
+  function attachColResize(handle){
+    const c = +handle.dataset.col;
+    handle.addEventListener("mousedown", e=>{
+      e.preventDefault(); e.stopPropagation();
+      const startX = e.clientX, startW = colW(c);
+      const colEl = document.querySelector(`#gridWrap col[data-colw="${c}"]`);
+      function mm(ev){ const w = Math.max(36, startW + (ev.clientX-startX)); if(colEl) colEl.style.width = w+"px"; }
+      function mu(ev){ document.removeEventListener("mousemove",mm); document.removeEventListener("mouseup",mu); setColW(c, Math.max(36, startW + (ev.clientX-startX))); markSaving(); }
+      document.addEventListener("mousemove",mm); document.addEventListener("mouseup",mu);
+    });
+    handle.addEventListener("dblclick", e=>{ e.preventDefault(); e.stopPropagation(); autoFitCol(c); });
+  }
+  function attachRowResize(handle){
+    const r = +handle.dataset.row;
+    handle.addEventListener("mousedown", e=>{
+      e.preventDefault(); e.stopPropagation();
+      const startY = e.clientY, startH = rowH(r), tr = handle.closest("tr");
+      function mm(ev){ const h = Math.max(20, startH + (ev.clientY-startY)); if(tr) tr.style.height = h+"px"; }
+      function mu(ev){ document.removeEventListener("mousemove",mm); document.removeEventListener("mouseup",mu); setRowH(r, Math.max(20, startH + (ev.clientY-startY))); markSaving(); }
+      document.addEventListener("mousemove",mm); document.addEventListener("mouseup",mu);
+    });
+  }
+  function autoFitCol(c){
+    const meas = document.createElement("span");
+    meas.style.cssText = "position:absolute;visibility:hidden;white-space:pre;font-size:13px;padding:0 6px;font-family:inherit;";
+    document.body.appendChild(meas);
+    let max = 48;
+    meas.textContent = F.idxToCol(c); max = Math.max(max, meas.offsetWidth + 26);
+    document.querySelectorAll(`#gridWrap .ss-cell[data-c="${c}"]`).forEach(td=>{ meas.textContent = td.textContent||""; const w = meas.offsetWidth + 20; if(w>max) max=w; });
+    document.body.removeChild(meas);
+    setColW(c, Math.min(Math.max(max,48), 460)); markSaving(); renderGrid();
+  }
+
+  /* ---- range selection (shift-click) ---- */
+  function extendRange(key){
+    const a = F.parseRef(selAnchor), b = F.parseRef(key);
+    if(!a || !b) return;
+    selRange = { r1:Math.min(a.row,b.row), c1:Math.min(a.col,b.col), r2:Math.max(a.row,b.row), c2:Math.max(a.col,b.col) };
+    highlightRange();
+    document.getElementById("cellRef").textContent = `${F.cellKey(selRange.r1,selRange.c1)}:${F.cellKey(selRange.r2,selRange.c2)}`;
+  }
+  function highlightRange(){
+    document.querySelectorAll("#gridWrap .ss-cell.in-range").forEach(td=>td.classList.remove("in-range"));
+    if(!selRange) return;
+    for(let r=selRange.r1;r<=selRange.r2;r++) for(let c=selRange.c1;c<=selRange.c2;c++){
+      const td = document.querySelector(`#gridWrap .ss-cell[data-key="${F.cellKey(r,c)}"]`); if(td) td.classList.add("in-range");
+    }
   }
   function refreshDisplays(exceptKey){
     const resolve = buildResolver();
@@ -150,7 +212,7 @@
 
   function tdFor(key){ return document.querySelector(`#gridWrap .ss-cell[data-key="${key}"]`); }
   function selectCell(key, focus){
-    selKey = key;
+    selKey = key; selAnchor = key; selRange = null; highlightRange();
     document.querySelectorAll("#gridWrap .ss-cell.selected").forEach(td=>td.classList.remove("selected"));
     const td = tdFor(key); if(!td) return;
     td.classList.add("selected");
@@ -214,25 +276,33 @@
     document.getElementById("fmtSelect").value = s.fmt || "general";
     document.getElementById("textColor").value = s.color || "#111111";
     document.getElementById("fillColor").value = s.bg || "#ffffff";
+    document.querySelector('[data-cmd="wrap"]')?.classList.toggle("active", !!s.wrap);
+  }
+  // Apply a style change to the selected range (or just the selected cell).
+  function eachTargetKey(fn){
+    if(selRange){ for(let r=selRange.r1;r<=selRange.r2;r++) for(let c=selRange.c1;c<=selRange.c2;c++) fn(F.cellKey(r,c)); }
+    else fn(selKey);
   }
   function cmd(name){
-    const s = styleOf(selKey, true);
-    if(name==="bold") s.b = !s.b;
-    else if(name==="italic") s.i = !s.i;
-    else if(name==="align-left") s.a = s.a==="left"?"":"left";
-    else if(name==="align-center") s.a = s.a==="center"?"":"center";
-    else if(name==="align-right") s.a = s.a==="right"?"":"right";
-    else if(name==="clear-fmt"){ const c=sheet().cells[selKey]; if(c){ delete c.s; if(c.v==null) delete sheet().cells[selKey]; } }
-    else if(name==="add-row"){ sheet().rows++; markSaving(); renderGrid(); return; }
-    else if(name==="add-col"){ sheet().cols++; markSaving(); renderGrid(); return; }
+    if(name==="add-row"){ sheet().rows++; markSaving(); renderGrid(); return; }
+    if(name==="add-col"){ sheet().cols++; markSaving(); renderGrid(); return; }
+    eachTargetKey(key=>{
+      const s = styleOf(key, true);
+      if(name==="bold") s.b = !s.b;
+      else if(name==="italic") s.i = !s.i;
+      else if(name==="align-left") s.a = s.a==="left"?"":"left";
+      else if(name==="align-center") s.a = s.a==="center"?"":"center";
+      else if(name==="align-right") s.a = s.a==="right"?"":"right";
+      else if(name==="wrap") s.wrap = !s.wrap;
+      else if(name==="clear-fmt"){ const c=sheet().cells[key]; if(c){ delete c.s; if(c.v==null) delete sheet().cells[key]; } }
+    });
     markSaving();
-    const td = tdFor(selKey); if(td) applyStyle(td, selKey);
-    refreshDisplays(); syncToolbar();
+    refreshDisplays(); highlightRange(); syncToolbar();
   }
   document.querySelectorAll(".ss-toolbar [data-cmd]").forEach(b=> b.addEventListener("mousedown", e=>{ e.preventDefault(); cmd(b.dataset.cmd); }));
-  document.getElementById("fmtSelect").addEventListener("change", e=>{ styleOf(selKey,true).fmt = e.target.value; markSaving(); refreshDisplays(); });
-  document.getElementById("textColor").addEventListener("input", e=>{ styleOf(selKey,true).color = e.target.value; markSaving(); const td=tdFor(selKey); if(td) applyStyle(td,selKey); });
-  document.getElementById("fillColor").addEventListener("input", e=>{ styleOf(selKey,true).bg = e.target.value; markSaving(); const td=tdFor(selKey); if(td) applyStyle(td,selKey); });
+  document.getElementById("fmtSelect").addEventListener("change", e=>{ eachTargetKey(k=>{ styleOf(k,true).fmt = e.target.value; }); markSaving(); refreshDisplays(); highlightRange(); });
+  document.getElementById("textColor").addEventListener("input", e=>{ eachTargetKey(k=>{ styleOf(k,true).color = e.target.value; const td=tdFor(k); if(td) applyStyle(td,k); }); markSaving(); highlightRange(); });
+  document.getElementById("fillColor").addEventListener("input", e=>{ eachTargetKey(k=>{ styleOf(k,true).bg = e.target.value; const td=tdFor(k); if(td) applyStyle(td,k); }); markSaving(); highlightRange(); });
 
   /* ---------------- workbook actions ---------------- */
   function openDoc(id){ doc = DB.spreadsheets.get(id); if(!doc) return; sheetIdx=0; selKey="A1"; renderDocSelect(); renderSheetTabs(); renderGrid(); }
@@ -283,26 +353,35 @@
     U.exportCSV(`${doc.name}-${s.name}`, all.length?all[0]:[], all.slice(1));
   });
   document.getElementById("printBtn").addEventListener("click", printSheet);
-  function printSheet(){
+  document.getElementById("printSelBtn").addEventListener("click", printSelection);
+  function printRegion(r1,c1,r2,c2, suffix){
     const s=sheet(), resolve=buildResolver();
-    // find used bounds
-    let maxR=0, maxC=0;
-    Object.keys(s.cells).forEach(k=>{ const p=F.parseRef(k); if(p && (s.cells[k].v!=null)){ maxR=Math.max(maxR,p.row); maxC=Math.max(maxC,p.col); } });
-    let head=`<tr><th></th>`; for(let c=0;c<=maxC;c++) head+=`<th>${F.idxToCol(c)}</th>`; head+=`</tr>`;
+    let head=`<tr><th></th>`; for(let c=c1;c<=c2;c++) head+=`<th>${F.idxToCol(c)}</th>`; head+=`</tr>`;
     let rows="";
-    for(let r=0;r<=maxR;r++){
+    for(let r=r1;r<=r2;r++){
       rows+=`<tr><th>${r+1}</th>`;
-      for(let c=0;c<=maxC;c++){
+      for(let c=c1;c<=c2;c++){
         const key=F.cellKey(r,c), cell=s.cells[key], st=cell&&cell.s?cell.s:{};
-        const style=[st.b?"font-weight:700":"",st.i?"font-style:italic":"",st.a?("text-align:"+st.a):"",st.color?("color:"+st.color):"",st.bg?("background:"+st.bg):""].filter(Boolean).join(";");
+        const style=[st.b?"font-weight:700":"",st.i?"font-style:italic":"",st.a?("text-align:"+st.a):"",st.color?("color:"+st.color):"",st.bg?("background:"+st.bg):"",st.wrap?"white-space:normal":"white-space:nowrap"].filter(Boolean).join(";");
         rows+=`<td style="${style}">${U.escapeHtml(displayVal(key,resolve))}</td>`;
       }
       rows+=`</tr>`;
     }
-    const body=`<div class="title">${U.escapeHtml(doc.name)} — ${U.escapeHtml(s.name)}</div>
+    const body=`<div class="title">${U.escapeHtml(doc.name)} — ${U.escapeHtml(s.name)}${suffix?` <span style="font-weight:400;font-size:13px">(${U.escapeHtml(suffix)})</span>`:""}</div>
       <table class="ssp">${head}${rows}</table>
       <div class="footer"><span>Generated via SubletWorks.com</span><span>${U.fmtDateTime(new Date())}</span></div>`;
     SW.UI.printDocument(`${doc.name} — ${s.name}`, body, {landscape:true});
+  }
+  function printSheet(){
+    const s=sheet();
+    let maxR=0, maxC=0;
+    Object.keys(s.cells).forEach(k=>{ const p=F.parseRef(k); if(p && (s.cells[k].v!=null)){ maxR=Math.max(maxR,p.row); maxC=Math.max(maxC,p.col); } });
+    printRegion(0,0,maxR,maxC,"");
+  }
+  function printSelection(){
+    if(!selRange){ U.toast("Select an area first — click a cell, then Shift-click another to mark the range.", {type:"danger"}); return; }
+    const {r1,c1,r2,c2} = selRange;
+    printRegion(r1,c1,r2,c2, `Selected area ${F.cellKey(r1,c1)}:${F.cellKey(r2,c2)}`);
   }
 
   /* keyboard shortcuts */

@@ -23,12 +23,19 @@ table.ss-grid{border-collapse:collapse;table-layout:fixed;font-size:13px;}
 .ss-grid th,.ss-grid td{border:1px solid var(--border);}
 .ss-grid thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);}
 .ss-corner{position:sticky;left:0;top:0;z-index:3;width:44px;background:var(--surface-2);}
-.ss-colhead{min-width:110px;height:26px;font-weight:600;color:var(--text-muted);text-align:center;cursor:pointer;user-select:none;}
+.ss-corner-col{width:44px;}
+.ss-colhead{height:26px;font-weight:600;color:var(--text-muted);text-align:center;cursor:pointer;user-select:none;position:relative;overflow:hidden;}
 .ss-colhead:hover{background:var(--sw-primary);color:#fff;}
-.ss-rowhead{position:sticky;left:0;z-index:1;width:44px;min-width:44px;background:var(--surface-2);font-weight:600;color:var(--text-muted);text-align:center;user-select:none;}
-.ss-cell{min-width:110px;max-width:110px;height:26px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;outline:none;cursor:cell;vertical-align:middle;}
+.ss-col-resize{position:absolute;top:0;right:-3px;width:7px;height:100%;cursor:col-resize;z-index:4;}
+.ss-col-resize:hover{background:var(--sw-primary);}
+.ss-rowhead{position:sticky;left:0;z-index:1;width:44px;min-width:44px;background:var(--surface-2);font-weight:600;color:var(--text-muted);text-align:center;user-select:none;position:relative;}
+.ss-row-resize{position:absolute;left:0;bottom:-3px;height:7px;width:100%;cursor:row-resize;z-index:2;}
+.ss-row-resize:hover{background:var(--sw-primary);}
+.ss-cell{height:26px;padding:2px 6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;outline:none;cursor:cell;vertical-align:middle;}
+.ss-cell.wrapped{white-space:normal;word-break:break-word;overflow:visible;text-overflow:clip;}
 .ss-cell:focus,.ss-cell.editing{overflow:visible;text-overflow:clip;background:var(--surface-solid);box-shadow:inset 0 0 0 2px var(--sw-primary);z-index:1;position:relative;}
 .ss-cell.selected{box-shadow:inset 0 0 0 2px var(--sw-primary);}
+.ss-cell.in-range{background:rgba(91,92,235,.14);}
 .ss-cell.has-formula:not(:focus)::after{content:"ƒ";position:absolute;font-size:8px;color:var(--sw-primary);opacity:.5;}
 
 .ss-sheet-tabs{display:flex;align-items:center;gap:4px;padding:6px 4px;border:1px solid var(--border);border-top:0;background:var(--surface-2);border-bottom-left-radius:var(--r-md);border-bottom-right-radius:var(--r-md);overflow-x:auto;}
