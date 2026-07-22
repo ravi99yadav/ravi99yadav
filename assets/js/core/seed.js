@@ -14,15 +14,15 @@
     DB.settings.set("platformCommissionPct", 2);
 
     const pm = DB.users.create({ name:"Rohit Malhotra", email:"pm@demo.subletworks.com", phone:"9811122233", password:"demo1234", role:"pm", status:"active", isDemo:true, district:"Gurugram", state:"Haryana" });
-    const contractor = DB.users.create({ name:"Suresh Yadav", email:"contractor@demo.subletworks.com", phone:"9822233344", password:"demo1234", role:"contractor", status:"active", isDemo:true, district:"Noida", state:"Uttar Pradesh" });
+    const contractor = DB.users.create({ name:"Suresh Yadav", email:"contractor@demo.subletworks.com", phone:"9822233344", password:"demo1234", role:"contractor", status:"active", isDemo:true, district:"Gautam Buddha Nagar (Noida)", state:"Uttar Pradesh" });
     const contractor2 = DB.users.create({ name:"Anil Sharma Constructions", email:"anil@builders.com", phone:"9833344455", password:"demo1234", role:"contractor", status:"active", isDemo:false, district:"Gurugram", state:"Haryana" });
-    const contractor3 = DB.users.create({ name:"Deepak Infra Works", email:"deepak@infra.com", phone:"9844455566", password:"demo1234", role:"contractor", status:"active", isDemo:false, district:"Delhi", state:"Delhi" });
+    const contractor3 = DB.users.create({ name:"Deepak Infra Works", email:"deepak@infra.com", phone:"9844455566", password:"demo1234", role:"contractor", status:"active", isDemo:false, district:"New Delhi", state:"Delhi" });
     const admin = DB.users.create({ name:"SubletWorks Admin", email:"admin@demo.subletworks.com", phone:"9999900000", password:"demo1234", role:"admin", status:"active", isDemo:true });
 
     DB.companies.create({ ownerId:pm.id, name:"Malhotra Infra Developers Pvt Ltd", gst:"06AAAPL1234C1Z5", pan:"AAAPL1234C", district:"Gurugram", state:"Haryana", trades:["Civil","MEP"] });
-    DB.companies.create({ ownerId:contractor.id, name:"Suresh Yadav & Co.", gst:"09AAACS4321B1Z2", pan:"AAACS4321B", msme:"UDYAM-UP-04-1234567", iso:"ISO 9001:2015", district:"Noida", state:"Uttar Pradesh", trades:["Civil","Structural"], rating:4.6, experienceYears:12, labourStrength:45, equipment:["Concrete Mixer","JCB","Tower Crane"] });
+    DB.companies.create({ ownerId:contractor.id, name:"Suresh Yadav & Co.", gst:"09AAACS4321B1Z2", pan:"AAACS4321B", msme:"UDYAM-UP-04-1234567", iso:"ISO 9001:2015", district:"Gautam Buddha Nagar (Noida)", state:"Uttar Pradesh", trades:["Civil","Structural"], rating:4.6, experienceYears:12, labourStrength:45, equipment:["Concrete Mixer","JCB","Tower Crane"] });
     DB.companies.create({ ownerId:contractor2.id, name:"Anil Sharma Constructions", gst:"06AAACS7788Q1Z1", pan:"AAACS7788Q", msme:"UDYAM-HR-06-9988776", iso:"", district:"Gurugram", state:"Haryana", trades:["Electrical","MEP"], rating:4.2, experienceYears:8, labourStrength:22, equipment:["Cable Puller","Generator"] });
-    DB.companies.create({ ownerId:contractor3.id, name:"Deepak Infra Works", gst:"07AAACD5566R1Z9", pan:"AAACD5566R", msme:"", iso:"ISO 45001:2018", district:"Delhi", state:"Delhi", trades:["Civil","Plumbing","Fire Fighting"], rating:4.8, experienceYears:15, labourStrength:60, equipment:["Excavator","Batching Plant"] });
+    DB.companies.create({ ownerId:contractor3.id, name:"Deepak Infra Works", gst:"07AAACD5566R1Z9", pan:"AAACD5566R", msme:"", iso:"ISO 45001:2018", district:"New Delhi", state:"Delhi", trades:["Civil","Plumbing","Fire Fighting"], rating:4.8, experienceYears:15, labourStrength:60, equipment:["Excavator","Batching Plant"] });
 
     // ---- Tender 1: Published, receiving bids ----
     const t1 = DB.tenders.create({
@@ -60,7 +60,7 @@
     DB.comments.create({ tenderId:t1.id, bidId:b2.id, boqItemId: DB.boqItems.list(i=>i.tenderId===t1.id)[2].id, authorId:pm.id, authorRole:"pm", text:"Rate for RCC columns looks high vs L1 — please revise or justify with material escalation." });
 
     // ---- Tender 2: Draft (BOQ builder in progress) ----
-    DB.tenders.create({ pmId:pm.id, title:"MEP Fit-out – IT Park Tower C (Draft)", workType:"MEP", district:"Noida", state:"Uttar Pradesh", status:"draft", description:"Electrical, HVAC and Fire fighting fit-out for 3 floors.", estimatedValue:3200000, boqMode:"partial", published:false });
+    DB.tenders.create({ pmId:pm.id, title:"MEP Fit-out – IT Park Tower C (Draft)", workType:"MEP", district:"Gautam Buddha Nagar (Noida)", state:"Uttar Pradesh", status:"draft", description:"Electrical, HVAC and Fire fighting fit-out for 3 floors.", estimatedValue:3200000, boqMode:"partial", published:false });
 
     // ---- Tender 3: Already awarded -> becomes a live project ----
     const t3 = DB.tenders.create({ pmId:pm.id, title:"Interior & Civil Work – Sector 45 Villas Phase 1", workType:"Civil", district:"Gurugram", state:"Haryana", status:"awarded", estimatedValue:5400000, paymentTerms:"20% advance, RA bills monthly, 10% retention.", retentionPct:10, published:true, publishedAt:new Date(Date.now()-30*86400000).toISOString(), awardedTo:contractor.id });
@@ -154,7 +154,7 @@
 
     // Marketplace listings
     DB.marketplaceListings.create({ sellerId:pm.id, sellerRole:"pm", category:"Material", title:"TMT Fe500 Steel Bars – Surplus Stock", quantity:"12 MT", condition:"New", price:68000, priceUnit:"per MT", district:"Gurugram", state:"Haryana", description:"Surplus TMT bars from completed project, mill test certificate available.", status:"active" });
-    DB.marketplaceListings.create({ sellerId:contractor3.id, sellerRole:"contractor", category:"Equipment", title:"JCB 3DX – Available on Rent", quantity:"1 unit", condition:"Good", price:1800, priceUnit:"per day", district:"Delhi", state:"Delhi", description:"Well maintained backhoe loader, operator available.", status:"active" });
+    DB.marketplaceListings.create({ sellerId:contractor3.id, sellerRole:"contractor", category:"Equipment", title:"JCB 3DX – Available on Rent", quantity:"1 unit", condition:"Good", price:1800, priceUnit:"per day", district:"New Delhi", state:"Delhi", description:"Well maintained backhoe loader, operator available.", status:"active" });
     DB.marketplaceListings.create({ sellerId:contractor2.id, sellerRole:"contractor", category:"Scrap", title:"MS Scrap – Site Clearance", quantity:"3.5 MT", condition:"Scrap", price:32000, priceUnit:"lump sum", district:"Gurugram", state:"Haryana", description:"Mixed MS scrap from dismantled shuttering, urgent sale.", status:"active" });
 
     // Notifications
